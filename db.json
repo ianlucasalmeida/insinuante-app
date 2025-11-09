@@ -1,0 +1,96 @@
+{
+  "users": [
+    {
+      "id": "1",
+      "name": "Usuário Teste Insinuante",
+      "email": "teste@insinuante.com",
+      "password": "123",
+      "cpf": "123.456.789-00",
+      "phone": "81999998888",
+      "birthdate": "1990-01-01"
+    },
+    {
+      "id": "cc0c",
+      "name": "Eduarda Lima de Oliveira ",
+      "email": "elo@icq.ru",
+      "password": "123456",
+      "cpf": "14798423968",
+      "phone": "11911111111",
+      "birthdate": "01012000"
+    }
+  ],
+  "carts": [
+    {
+      "id": "fc10",
+      "userId": "cc0c",
+      "productId": 7,
+      "productApiSource": "platzi",
+      "name": "Classic Comfort Drawstring Joggers",
+      "price": 79,
+      "image": "https://i.imgur.com/mp3rUty.jpeg",
+      "quantity": 1
+    },
+    {
+      "id": "c791",
+      "userId": "cc0c",
+      "productId": 5,
+      "productApiSource": "fake-store",
+      "name": "John Hardy Women's Legends Naga Gold & Silver Dragon Station Chain Bracelet",
+      "price": 695,
+      "image": "https://fakestoreapi.com/img/71pWzhdJNwL._AC_UL640_QL65_ML3_t.png",
+      "quantity": 1
+    }
+  ],
+  "orders": [
+    {
+      "id": "b6be",
+      "userId": "cc0c",
+      "items": [
+        {
+          "name": "Fjallraven - Foldsack No. 1 Backpack, Fits 15 Laptops",
+          "price": 109.95,
+          "quantity": 1
+        },
+        {
+          "name": "Classic High-Waisted Athletic Shorts",
+          "price": 43,
+          "quantity": 1
+        },
+        {
+          "name": "Classic White Crew Neck T-Shirt",
+          "price": 39,
+          "quantity": 1
+        }
+      ],
+      "total": "191.95",
+      "createdAt": "2025-11-08T23:32:50.875Z",
+      "paymentMethod": "card" 
+    }
+  ],
+  "addresses": [
+    {
+      "id": "1",
+      "userId": 1,
+      "cep": "50030-040",
+      "street": "Rua da Moeda",
+      "number": "123",
+      "complement": "Apto 404",
+      "neighborhood": "Recife",
+      "city": "Recife",
+      "state": "PE",
+      "isPrimary": true
+    },
+    {
+      "id": "50b8",
+      "cep": "54170675",
+      "street": "Rua Um",
+      "number": "200",
+      "complement": "Casa",
+      "neighborhood": "Sucupira",
+      "city": "Jaboatão dos Guararapes",
+      "state": "PE",
+      "userId": "cc0c",
+      "isPrimary": true
+    }
+  ]
+}

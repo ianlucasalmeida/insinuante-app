@@ -22,10 +22,10 @@ export default function Login() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Insinuante</Text>
+      <Text style={styles.title}>Shopee</Text>
       <TextInput
         style={styles.input}
-        placeholder="Email (teste@insinuante.com)"
+        placeholder="Email (teste@shopee.com)"
         value={email}
         onChangeText={setEmail}
         keyboardType="email-address"

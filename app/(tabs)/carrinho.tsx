@@ -7,7 +7,7 @@ import { useFocusEffect, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
 // 🚨 IMPORTANTE: Use o mesmo IP do AuthContext!
-const API_URL = 'http://192.168.0.103:3001'; // ⚠️ TROQUE AQUI!
+const API_URL = 'http://192.168.1.73:3001'; // ⚠️ TROQUE AQUI!
 
 export default function CartPage() {
   const { user } = useAuth();

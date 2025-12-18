@@ -4,7 +4,7 @@ import { router } from 'expo-router';
 import axios from 'axios'; // 1. USANDO AXIOS
 
 // 2. 🚨 VERIFIQUE SE ESTE IP AINDA ESTÁ CORRETO! 🚨
-const API_URL = 'http://192.168.0.103:3001'; 
+const API_URL = 'http://192.168.1.73:3001'; 
 
 // O 'User' precisa ter os campos novos
 type User = {
@@ -20,7 +20,7 @@ type User = {
 type AuthContextType = {
   user: User | null;
   loading: boolean;
-  login: (email, password) => Promise<any>;
+  login: (email: any, password: any) => Promise<any>;
   // 'register' agora espera dois objetos
   register: (userData: any, addressData: any) => Promise<any>; 
   logout: () => void;
@@ -58,7 +58,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     loadUserFromStorage();
   }, []);
 
-  const login = async (email, password) => {
+  const login = async (email: any, password: any) => {
     try {
       const response = await axios.get(`${API_URL}/users?email=${email}&password=${password}`);
       

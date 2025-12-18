@@ -14,7 +14,7 @@ import { useFocusEffect } from 'expo-router';
 
 // 🚨 IMPORTANTE: Verifique se este IP (192.168.0.103) ainda é o IP do seu Fedora!
 // Se o "Network Error" continuar, é porque seu IP mudou.
-const API_URL = 'http://192.168.0.103:3001'; 
+const API_URL = 'http://192.168.1.73:3001'; 
 
 export default function OrdersPage() {
   const { user } = useAuth();
@@ -61,7 +61,7 @@ export default function OrdersPage() {
       </View>
       <View style={styles.orderBody}>
         {/* Lista os itens comprados */}
-        {item.items.map((prod, index) => (
+        {item.items.map((prod: any, index: number) => (
           <Text key={index} style={styles.orderItem}>
             {prod.quantity}x {prod.name}
           </Text>

@@ -17,6 +17,24 @@
       "cpf": "14798423968",
       "phone": "11911111111",
       "birthdate": "01012000"
+    },
+    {
+      "id": "d48d",
+      "name": "Lucas Silva",
+      "email": "l@gmail.com",
+      "password": "1234",
+      "cpf": "0000000000",
+      "phone": "819929192991",
+      "birthdate": "2002-02-18"
+    },
+    {
+      "id": "62f9",
+      "name": "Will",
+      "email": "will@gmail.com",
+      "password": "1234",
+      "cpf": "22222222273",
+      "phone": "81984426313",
+      "birthdate": "2002-02-12"
     }
   ],
   "carts": [
@@ -64,7 +82,7 @@
       ],
       "total": "191.95",
       "createdAt": "2025-11-08T23:32:50.875Z",
-      "paymentMethod": "card" 
+      "paymentMethod": "card"
     }
   ],
   "addresses": [
@@ -90,6 +108,30 @@
       "city": "Jaboatão dos Guararapes",
       "state": "PE",
       "userId": "cc0c",
+      "isPrimary": true
+    },
+    {
+      "id": "ef5d",
+      "cep": "54420480",
+      "street": "Rua das Avencas",
+      "number": "40",
+      "complement": "Casa",
+      "neighborhood": "Piedade",
+      "city": "Jaboatão dos Guararapes",
+      "state": "PE",
+      "userId": "d48d",
+      "isPrimary": true
+    },
+    {
+      "id": "4a37",
+      "cep": "54420480",
+      "street": "Rua das Avencas",
+      "number": "520",
+      "complement": "Casa",
+      "neighborhood": "Piedade",
+      "city": "Jaboatão dos Guararapes",
+      "state": "PE",
+      "userId": "62f9",
       "isPrimary": true
     }
   ]

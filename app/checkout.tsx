@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  Alert, 
-  ScrollView, 
-  TouchableOpacity, 
-  TextInput, 
+import {
+  View,
+  Text,
+  StyleSheet,
+  Alert,
+  ScrollView,
+  TouchableOpacity,
+  TextInput,
   Button,
   ActivityIndicator
 } from 'react-native';
@@ -17,12 +17,12 @@ import { Colors } from '../constants/Colors';
 import { Ionicons } from '@expo/vector-icons';
 
 // 🚨 IMPORTANTE: Use o mesmo IP do AuthContext!
-const API_URL = 'http://192.168.0.103:3001'; // ⚠️ TROQUE AQUI!
+const API_URL = 'http://192.168.1.73:3001'; // ⚠️ TROQUE AQUI!
 
 export default function CheckoutPage() {
   const { user } = useAuth();
   const params = useLocalSearchParams();
-  
+
   // Recebe os dados da tela do Carrinho
   const { total, cartItems: cartItemsString } = params;
   const cartItems = JSON.parse(cartItemsString as string);
@@ -38,6 +38,10 @@ export default function CheckoutPage() {
 
   // Lógica de pagamento (A LÓGICA QUE ANTES ESTAVA NO CARRINHO)
   const handlePayment = async () => {
+    if (!user) {
+      Alert.alert('Erro', 'Sessão inválida. Faça login novamente.');
+      return;
+    }
     // 1. Validação (só se for cartão)
     if (paymentMethod === 'card') {
       if (!cardName || !cardNumber || !cardExpiry || !cardCvv) {
@@ -52,7 +56,7 @@ export default function CheckoutPage() {
     // 2. Cria o objeto do Pedido (Order)
     const order = {
       userId: user.id,
-      items: cartItems.map(item => ({ // Salva os itens no pedido
+      items: cartItems.map((item: any ) => ({ // Salva os itens no pedido
         name: item.name,
         price: item.price,
         quantity: item.quantity,
@@ -67,7 +71,7 @@ export default function CheckoutPage() {
       await axios.post(`${API_URL}/orders`, order);
 
       // 4. Limpa o carrinho (loop de DELETES)
-      const deletePromises = cartItems.map(item => 
+      const deletePromises = cartItems.map((item: any) =>
         axios.delete(`${API_URL}/carts/${item.id}`)
       );
       await Promise.all(deletePromises);
@@ -86,38 +90,38 @@ export default function CheckoutPage() {
   // Componente do Formulário de Cartão
   const CardForm = () => (
     <View style={styles.form}>
-      <TextInput 
-        style={styles.input} 
-        placeholder="Nome no Cartão" 
+      <TextInput
+        style={styles.input}
+        placeholder="Nome no Cartão"
         value={cardName}
         onChangeText={setCardName}
-        placeholderTextColor={Colors.grey} 
+        placeholderTextColor={Colors.grey}
       />
-      <TextInput 
-        style={styles.input} 
-        placeholder="Número do Cartão (ex: 4242...)" 
+      <TextInput
+        style={styles.input}
+        placeholder="Número do Cartão (ex: 4242...)"
         value={cardNumber}
         onChangeText={setCardNumber}
         keyboardType="numeric"
-        placeholderTextColor={Colors.grey} 
+        placeholderTextColor={Colors.grey}
       />
       <View style={styles.row}>
-        <TextInput 
-          style={[styles.input, styles.flexHalf]} 
-          placeholder="Validade (MM/AA)" 
+        <TextInput
+          style={[styles.input, styles.flexHalf]}
+          placeholder="Validade (MM/AA)"
           value={cardExpiry}
           onChangeText={setCardExpiry}
           keyboardType="numeric"
-          placeholderTextColor={Colors.grey} 
+          placeholderTextColor={Colors.grey}
         />
-        <TextInput 
-          style={[styles.input, styles.flexHalf]} 
-          placeholder="CVV" 
+        <TextInput
+          style={[styles.input, styles.flexHalf]}
+          placeholder="CVV"
           value={cardCvv}
           onChangeText={setCardCvv}
           keyboardType="numeric"
           secureTextEntry
-          placeholderTextColor={Colors.grey} 
+          placeholderTextColor={Colors.grey}
         />
       </View>
     </View>
@@ -160,14 +164,14 @@ export default function CheckoutPage() {
             style={[styles.toggleButton, paymentMethod === 'pix' && styles.toggleActive]}
             onPress={() => setPaymentMethod('pix')}
           >
-            <Ionicons name="logo-pix" size={20} color={paymentMethod === 'pix' ? Colors.white : Colors.primary} />
+            <Ionicons name="qr-code" size={20} color={paymentMethod === 'pix' ? Colors.white : Colors.primary} />
             <Text style={[styles.toggleText, paymentMethod === 'pix' && styles.toggleTextActive]}> PIX</Text>
           </TouchableOpacity>
         </View>
 
         {/* Conteúdo (Formulário ou PIX) */}
         {paymentMethod === 'card' ? <CardForm /> : <PixDisplay />}
-        
+
       </ScrollView>
 
       {/* Botão de Pagar (fixo no rodapé) */}

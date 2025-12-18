@@ -7,7 +7,7 @@ import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
 
 // 🚨 IMPORTANTE: Use o mesmo IP do AuthContext!
-const API_URL = 'http://192.168.0.103:3001'; // ⚠️ VERIFIQUE SEU IP!
+const API_URL = 'http://192.168.1.73:3001'; // ⚠️ VERIFIQUE SEU IP!
 
 export default function ProductDetail() {
   const { product: productString } = useLocalSearchParams();

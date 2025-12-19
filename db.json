@@ -35,6 +35,15 @@
       "cpf": "22222222273",
       "phone": "81984426313",
       "birthdate": "2002-02-12"
+    },
+    {
+      "id": "a8cc",
+      "name": "Ian Almeida",
+      "email": "ian@gmail.com",
+      "password": "1234",
+      "cpf": "58015668504",
+      "phone": "81984431331",
+      "birthdate": "2000-04-12"
     }
   ],
   "carts": [
@@ -132,6 +141,18 @@
       "city": "Jaboatão dos Guararapes",
       "state": "PE",
       "userId": "62f9",
+      "isPrimary": true
+    },
+    {
+      "id": "6b26",
+      "cep": "54440100",
+      "street": "Rua Hermano de Barros e Silva",
+      "number": "120",
+      "complement": "Casa",
+      "neighborhood": "Candeias",
+      "city": "Jaboatão dos Guararapes",
+      "state": "PE",
+      "userId": "a8cc",
       "isPrimary": true
     }
   ]

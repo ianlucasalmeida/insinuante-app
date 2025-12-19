@@ -1,80 +1,111 @@
 import axios from 'axios';
 
-const PLATZI_API = 'https://api.escuelajs.co/api/v1';
-const FAKE_STORE_API = 'https://fakestoreapi.com';
+const BASE_URL = 'http://192.168.1.64:3333';
 
-// Interface Normalizada (Nosso modelo de Produto Padrão)
 export interface Product {
-  id: string; // ID único (ex: "platzi-1" ou "fake-store-1")
-  originalId: number;
-  apiSource: 'platzi' | 'fake-store';
-  title: string;
-  price: number;
+  id: string;
+  name: string;
   description: string;
-  image: string;
+  price: number;
+  stock: number;
   category: string;
+  image: string;       // Imagem principal
+  images: string[];    // Array de imagens
+  rating?: number;
+  reviews?: number;
+  sold?: number;
 }
 
-// Converte um produto da Platzi para o nosso formato Product
-const normalizePlatziProduct = (item: any): Product => ({
-  id: `platzi-${item.id}`,
-  originalId: item.id,
-  apiSource: 'platzi',
-  title: item.title,
-  price: item.price,
-  description: item.description,
-  // Platzi usa um array 'images', pegamos a primeira
-  image: (item.images && item.images.length > 0) ? item.images[0] : 'https://via.placeholder.com/150', 
-  category: item.category.name,
+export interface OrderItem {
+  productId: string;
+  name: string;
+  quantity: number;
+  price: number;
+  image: string;
+}
+
+export interface OrderData {
+  customerId: string;
+  total: number;
+  items: OrderItem[];
+  paymentMethod: string;
+  addressId: string;
+  status: string;
+  date: string;
+}
+
+const api = axios.create({
+  baseURL: BASE_URL,
 });
 
-// Converte um produto da Fake Store para o nosso formato Product
-const normalizeFakeStoreProduct = (item: any): Product => ({
-  id: `fake-store-${item.id}`,
-  originalId: item.id,
-  apiSource: 'fake-store',
-  title: item.title,
-  price: item.price,
-  description: item.description,
-  image: item.image, // Fake Store usa 'image' string
-  category: item.category,
-});
-
-// Função principal que busca e mescla tudo
-export const fetchAggregatedProducts = async (): Promise<Product[]> => {
+// Busca os produtos que os Vendedores cadastraram no Shopee-Web
+export const getProducts = async (search?: string): Promise<Product[]> => {
   try {
-    const [platziResponse, fakeStoreResponse] = await Promise.all([
-      axios.get(`${PLATZI_API}/products?limit=20&offset=0`),
-      axios.get(`${FAKE_STORE_API}/products?limit=20`)
-    ]);
-
-    const platziProducts = platziResponse.data.map(normalizePlatziProduct);
-    const fakeStoreProducts = fakeStoreResponse.data.map(normalizeFakeStoreProduct);
-
-    // Intercala os produtos para uma vitrine mais dinâmica
-    let merged: Product[] = [];
-    let i = 0;
-    while (i < platziProducts.length || i < fakeStoreProducts.length) {
-      if (platziProducts[i]) merged.push(platziProducts[i]);
-      if (fakeStoreProducts[i]) merged.push(fakeStoreProducts[i]);
-      i++;
-    }
-    
-    return merged;
-
+    // Adiciona o parâmetro na URL se ele existir
+    const url = search ? `/products?search=${search}` : '/products';
+    const response = await api.get(url);
+    return response.data;
   } catch (error) {
-    console.error("Failed to fetch aggregated products:", error);
+    console.error("Erro ao buscar produtos do backend:", error);
     return [];
   }
 };
 
-// Função para buscar as categorias da Platzi (para o carrossel)
-export const fetchPlatziCategories = async () => {
+export const createOrder = async (orderData: any) => {
   try {
-    const response = await axios.get(`${PLATZI_API}/categories?limit=10`);
-    return response.data; // Retorna ex: [{ id: 1, name: 'Clothes', image: '...' }]
+    const response = await api.post('/orders', orderData);
+    return response.data;
   } catch (error) {
-    console.error("Failed to fetch categories:", error);
+    console.error("Erro ao criar pedido:", error);
+    throw error;
+  }
+};
+
+export const clearUserCart = async (userId: string) => {
+  try {
+    await api.delete(`/cart/user/${userId}`);
+  } catch (error) {
+    console.error("Erro ao limpar carrinho:", error);
+  }
+};
+
+export const fetchCart = async (userId: string) => {
+  const response = await api.get(`/cart/${userId}`);
+  return response.data;
+};
+
+export const addToCart = async (itemData: any) => {
+  const response = await api.post('/cart', itemData);
+  return response.data;
+};
+
+export const updateCartQuantity = async (id: string, quantity: number) => {
+  const response = await api.put(`/cart/${id}`, { quantity });
+  return response.data;
+};
+
+export const removeFromCart = async (id: string) => {
+  await api.delete(`/cart/${id}`);
+};
+
+export const toggleFavorite = async (userId: string, productId: string) => {
+  const response = await api.post('/favorites/toggle', { userId, productId });
+  return response.data; // { favorited: boolean }
+};
+
+export const getUserFavorites = async (userId: string): Promise<string[]> => {
+  const response = await api.get(`/favorites/user/${userId}`);
+  return response.data; // Retorna array de IDs: ["id1", "id2"]
+};
+
+export const getFavoriteProducts = async (userId: string): Promise<Product[]> => {
+  try {
+    const response = await api.get(`/favorites/details/${userId}`);
+    return response.data;
+  } catch (error) {
+    console.error("Erro ao buscar produtos favoritos:", error);
     return [];
   }
 };
+
+export default api;

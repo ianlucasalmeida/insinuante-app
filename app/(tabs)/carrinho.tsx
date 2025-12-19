@@ -3,28 +3,27 @@ import { View, Text, FlatList, Button, StyleSheet, Alert, ActivityIndicator, Ima
 import { useAuth } from '../../context/AuthContext';
 import axios from 'axios';
 import { Colors } from '../../constants/Colors';
-import { useFocusEffect, router } from 'expo-router'; 
+import { useFocusEffect, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
 // 🚨 IMPORTANTE: Use o mesmo IP do AuthContext!
-const API_URL = 'http://192.168.1.73:3001'; // ⚠️ TROQUE AQUI!
+const API_URL = 'http://192.168.1.64:3333'; // ⚠️ TROQUE AQUI!
 
 export default function CartPage() {
   const { user } = useAuth();
   const [cartItems, setCartItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // --- (Funções fetchCartItems, handleUpdateQuantity, handleRemoveItem... 
-  // ...NENHUMA MUDANÇA NA LÓGICA DELES) ---
-
   const fetchCartItems = async () => {
     if (!user) return;
     setLoading(true);
     try {
-      const response = await axios.get(`${API_URL}/carts?userId=${user.id}`);
+      // Rota corrigida: /cart/:userId
+      const response = await axios.get(`${API_URL}/cart/${user.id}`);
       setCartItems(response.data);
     } catch (e) {
-      Alert.alert('Erro', 'Não foi possível carregar o carrinho.');
+      console.error("Erro ao carregar carrinho:", e);
+      Alert.alert('Erro', 'Não foi possível carregar o carrinho do PostgreSQL.');
     } finally {
       setLoading(false);
     }
@@ -41,26 +40,21 @@ export default function CartPage() {
       handleRemoveItem(item.id);
       return;
     }
-    setCartItems(currentItems =>
-      currentItems.map(cartItem =>
-        cartItem.id === item.id ? { ...cartItem, quantity: newQuantity } : cartItem
-      )
-    );
     try {
-      await axios.put(`${API_URL}/carts/${item.id}`, {
-        ...item,
+      // Atualiza apenas a quantidade no banco
+      await axios.put(`${API_URL}/cart/${item.id}`, {
         quantity: newQuantity,
       });
+      fetchCartItems(); // Recarrega para garantir sincronia
     } catch (e) {
       Alert.alert('Erro', 'Não foi possível atualizar a quantidade.');
-      fetchCartItems(); 
     }
   };
-  
-  const handleRemoveItem = async (itemId: number) => {
+
+  const handleRemoveItem = async (itemId: string) => {
     try {
-      await axios.delete(`${API_URL}/carts/${itemId}`);
-      setCartItems(prevItems => prevItems.filter(item => item.id !== itemId));
+      await axios.delete(`${API_URL}/cart/${itemId}`);
+      fetchCartItems();
     } catch (e) {
       Alert.alert('Erro', 'Não foi possível remover o item.');
     }
@@ -80,17 +74,17 @@ export default function CartPage() {
       pathname: '/checkout',
       params: {
         total: total.toFixed(2),
-        cartItems: JSON.stringify(cartItems) 
+        cartItems: JSON.stringify(cartItems)
       }
     });
   };
-  
+
   // --- (Render Lógica) ---
 
   if (loading) {
     return <ActivityIndicator size="large" color={Colors.primary} style={styles.loader} />;
   }
-  
+
   if (cartItems.length === 0) {
     return <View style={styles.container}><Text style={styles.emptyText}>Seu carrinho está vazio.</Text></View>;
   }
@@ -102,14 +96,14 @@ export default function CartPage() {
         <Text style={styles.itemName} numberOfLines={2}>{item.name}</Text>
         <Text style={styles.itemPrice}>R$ {(item.price * item.quantity).toFixed(2)}</Text>
         <View style={styles.quantityContainer}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.quantityButton}
             onPress={() => handleUpdateQuantity(item, item.quantity - 1)}
           >
             <Ionicons name="remove" size={20} color={Colors.primary} />
           </TouchableOpacity>
           <Text style={styles.quantityText}>{item.quantity}</Text>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.quantityButton}
             onPress={() => handleUpdateQuantity(item, item.quantity + 1)}
           >
@@ -159,31 +153,31 @@ const styles = StyleSheet.create({
     elevation: 2,
     alignItems: 'center',
   },
-  itemImage: { 
-    width: 80, 
-    height: 80, 
-    borderRadius: 8, 
+  itemImage: {
+    width: 80,
+    height: 80,
+    borderRadius: 8,
     marginRight: 12,
-    resizeMode: 'contain' 
+    resizeMode: 'contain'
   },
-  itemDetails: { 
+  itemDetails: {
     flex: 1,
     justifyContent: 'center',
     paddingRight: 10,
   },
-  itemName: { 
-    fontSize: 16, 
-    fontWeight: '500', 
-    marginBottom: 4 
+  itemName: {
+    fontSize: 16,
+    fontWeight: '500',
+    marginBottom: 4
   },
   itemPrice: {
-    fontSize: 16, 
-    color: Colors.primary, 
+    fontSize: 16,
+    color: Colors.primary,
     fontWeight: 'bold',
     marginBottom: 12,
   },
-  removeButton: { 
-    padding: 10, 
+  removeButton: {
+    padding: 10,
     marginLeft: 'auto',
   },
   quantityContainer: {
@@ -201,7 +195,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#333',
     marginHorizontal: 15,
-    minWidth: 20, 
+    minWidth: 20,
     textAlign: 'center',
   },
   footer: {

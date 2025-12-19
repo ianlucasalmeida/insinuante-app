@@ -1,30 +1,27 @@
+// insinuante-app/context/AuthContext.tsx
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
-import axios from 'axios'; // 1. USANDO AXIOS
+import axios from 'axios';
 
-// 2. 🚨 VERIFIQUE SE ESTE IP AINDA ESTÁ CORRETO! 🚨
-const API_URL = 'http://192.168.1.73:3001'; 
+// 🚨 USE A PORTA 3333 E O SEU IP ATUAL (verifique com hostname -I no Fedora)
+const API_URL = 'http://192.168.1.64:3333';
 
-// O 'User' precisa ter os campos novos
 type User = {
-  id: number;
+  id: string; // Agora é String (UUID do Postgres)
   name: string;
   email: string;
-  cpf: string;
-  phone: string;
-  birthdate: string;
+  cpf?: string;
+  phone?: string;
+  birthdate?: string;
 };
 
-// 3. ATUALIZANDO O CONTEXT TYPE
 type AuthContextType = {
   user: User | null;
   loading: boolean;
   login: (email: any, password: any) => Promise<any>;
-  // 'register' agora espera dois objetos
-  register: (userData: any, addressData: any) => Promise<any>; 
+  register: (userData: any, addressData: any) => Promise<any>;
   logout: () => void;
-  // Função para a tela de 'configuracoes'
   updateUserContext: (user: User) => Promise<void>;
 };
 
@@ -60,72 +57,46 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const login = async (email: any, password: any) => {
     try {
-      const response = await axios.get(`${API_URL}/users?email=${email}&password=${password}`);
-      
-      if (response.data && response.data.length > 0) {
-        const userData = response.data[0];
-        setUser(userData);
-        await AsyncStorage.setItem(SESSION_KEY, JSON.stringify(userData));
-        router.replace('/(tabs)');
-        return { success: true };
-      }
-      return { success: false, error: 'Email ou senha inválidos' };
+      // 1. Usa POST e envia no corpo (Segurança Profissional)
+      const response = await axios.post(`${API_URL}/auth/login`, { email, password });
+
+      const userData = response.data;
+      setUser(userData);
+      await AsyncStorage.setItem(SESSION_KEY, JSON.stringify(userData));
+      router.replace('/(tabs)');
+      return { success: true };
     } catch (e: any) {
-      console.error("ERRO DE CONEXÃO NO LOGIN:", e.message);
-      return { success: false, error: 'Network Error: Verifique o IP e o json-server.' };
+      console.error("ERRO NO LOGIN:", e.response?.data || e.message);
+      return { success: false, error: e.response?.data?.error || 'Email ou senha incorretos.' };
     }
   };
 
-  // 4. 👇 FUNÇÃO 'register' ATUALIZADA
   const register = async (userData: any, addressData: any) => {
-     try {
-      // Etapa 1: Verificar se o email já existe
-      const check = await axios.get(`${API_URL}/users?email=${userData.email}`);
-      if (check.data && check.data.length > 0) {
-        return { success: false, error: 'Este email já está cadastrado' };
-      }
-      
-      // Etapa 2: Criar o Usuário (POST /users)
-      const userResponse = await axios.post(`${API_URL}/users`, { 
-        name: userData.name, 
-        email: userData.email, 
-        password: userData.password,
-        cpf: userData.cpf,
-        phone: userData.phone,
-        birthdate: userData.birthdate
+    try {
+      // 2. ENVIE TUDO EM UM ÚNICO POST PARA A ROTA PROFISSIONAL
+      const response = await axios.post(`${API_URL}/auth/register`, {
+        userData,
+        addressData
       });
-      
-      const newUserData = userResponse.data;
-      const newUserId = newUserData.id;
 
-      // Etapa 3: Criar o Endereço (POST /addresses)
-      // O 'addressData' vem da tela de cadastro
-      await axios.post(`${API_URL}/addresses`, {
-        ...addressData,
-        userId: newUserId,
-        isPrimary: true // Marcamos como endereço principal
-      });
-      
-      // Etapa 4: Logar o usuário e finalizar
+      const newUserData = response.data;
       setUser(newUserData);
       await AsyncStorage.setItem(SESSION_KEY, JSON.stringify(newUserData));
       router.replace('/(tabs)');
       return { success: true };
 
     } catch (e: any) {
-      console.error("ERRO DE CONEXÃO NO REGISTRO:", e.message);
-      return { success: false, error: 'Network Error: Verifique o IP e o json-server.' };
+      // 3. CAPTURA O ERRO REAL (importante para saber se o IP está errado ou se o banco rejeitou)
+      console.error("ERRO NO REGISTRO:", e.response?.data || e.message);
+      return { success: false, error: e.response?.data?.error || 'Erro de rede ou dados inválidos.' };
     }
   };
-
-  // 5. 👇 FUNÇÃO 'updateUserContext' ADICIONADA
-  // (Para a tela de 'configuracoes' funcionar)
   const updateUserContext = async (updatedUser: User) => {
     try {
       setUser(updatedUser);
       await AsyncStorage.setItem(SESSION_KEY, JSON.stringify(updatedUser));
     } catch (e) {
-      console.error("Erro ao atualizar sessão do usuário:", e);
+      console.error("Erro ao atualizar sessão:", e);
     }
   };
 
@@ -135,7 +106,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     router.replace('/(auth)/login');
   };
 
-  // 6. 👇 'value' ATUALIZADO
   return (
     <AuthContext.Provider value={{ user, loading, login, register, logout, updateUserContext }}>
       {children}

@@ -12,76 +12,64 @@ import {
 } from 'react-native';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '../context/AuthContext';
-import axios from 'axios';
 import { Colors } from '../constants/Colors';
 import { Ionicons } from '@expo/vector-icons';
+import { clearUserCart, createOrder } from '../api/publicApi';
+
 
 // 🚨 IMPORTANTE: Use o mesmo IP do AuthContext!
-const API_URL = 'http://192.168.1.73:3001'; // ⚠️ TROQUE AQUI!
+const API_URL = 'http://192.168.1.64:3333'; // ⚠️ TROQUE AQUI!
 
 export default function CheckoutPage() {
   const { user } = useAuth();
   const params = useLocalSearchParams();
-
-  // Recebe os dados da tela do Carrinho
   const { total, cartItems: cartItemsString } = params;
   const cartItems = JSON.parse(cartItemsString as string);
 
-  const [paymentMethod, setPaymentMethod] = useState('card'); // 'card' ou 'pix'
+  const [paymentMethod, setPaymentMethod] = useState('card');
   const [isProcessing, setIsProcessing] = useState(false);
-
-  // Estados para o formulário de cartão
   const [cardName, setCardName] = useState('');
   const [cardNumber, setCardNumber] = useState('');
   const [cardExpiry, setCardExpiry] = useState('');
   const [cardCvv, setCardCvv] = useState('');
 
-  // Lógica de pagamento (A LÓGICA QUE ANTES ESTAVA NO CARRINHO)
   const handlePayment = async () => {
     if (!user) {
-      Alert.alert('Erro', 'Sessão inválida. Faça login novamente.');
+      Alert.alert('Erro', 'Sessão inválida.');
       return;
     }
-    // 1. Validação (só se for cartão)
-    if (paymentMethod === 'card') {
-      if (!cardName || !cardNumber || !cardExpiry || !cardCvv) {
-        Alert.alert('Erro', 'Preencha todos os dados do cartão.');
-        return;
-      }
-      // (Aqui entraria a validação do Stripe/PayPal)
+
+    if (paymentMethod === 'card' && (!cardName || !cardNumber || !cardExpiry || !cardCvv)) {
+      Alert.alert('Erro', 'Preencha os dados do cartão.');
+      return;
     }
 
     setIsProcessing(true);
 
-    // 2. Cria o objeto do Pedido (Order)
-    const order = {
-      userId: user.id,
-      items: cartItems.map((item: any ) => ({ // Salva os itens no pedido
+    // 2. MAPEAR DADOS PARA O PADRÃO DO BACKEND (PRISMA)
+    const orderData = {
+      customerId: user.id.toString(), // Converte number para string para o Prisma
+      total: parseFloat(total as string),
+      paymentMethod: paymentMethod === 'card' ? 'Cartão' : 'PIX',
+      addressId: "id-padrao",
+      items: cartItems.map((item: any) => ({
+        productId: item.productId || item.id,
         name: item.name,
         price: item.price,
         quantity: item.quantity,
-      })),
-      total: total,
-      createdAt: new Date().toISOString(),
-      paymentMethod: paymentMethod // Salva a forma de pagamento
+        image: item.image
+      }))
     };
 
     try {
-      // 3. Salva o pedido no db.json
-      await axios.post(`${API_URL}/orders`, order);
+      // 1. Salva o pedido no PostgreSQL (Porta 3333)
+      await createOrder(orderData);
+      await clearUserCart(user.id.toString());
 
-      // 4. Limpa o carrinho (loop de DELETES)
-      const deletePromises = cartItems.map((item: any) =>
-        axios.delete(`${API_URL}/carts/${item.id}`)
-      );
-      await Promise.all(deletePromises);
-
-      // 5. Redireciona para o Sucesso
       router.replace('/pedido-concluido');
-
     } catch (e) {
-      console.error("Erro no Pagamento:", e);
-      Alert.alert('Erro', 'Não foi possível processar seu pagamento.');
+      console.error("Erro no Checkout:", e);
+      Alert.alert('Erro', 'Network Error: Verifique se o servidor está rodando no IP correto.');
     } finally {
       setIsProcessing(false);
     }

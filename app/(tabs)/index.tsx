@@ -1,81 +1,88 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { 
-  View, 
-  FlatList, 
-  ActivityIndicator, 
-  StyleSheet, 
-  TouchableOpacity, 
-  Text, 
+import {
+  View,
+  FlatList,
+  ActivityIndicator,
+  StyleSheet,
+  TouchableOpacity,
+  Text,
   Image,
-  TextInput 
+  TextInput
 } from 'react-native';
 import { router } from 'expo-router';
-import { fetchAggregatedProducts, fetchPlatziCategories, Product } from '../../api/publicApi';
+import { getProducts, Product } from '../../api/publicApi';
 import { Colors } from '../../constants/Colors';
 import { Ionicons } from '@expo/vector-icons';
 
-// 1. Hook customizado para o "Debounce"
+// Hook para o Debounce da busca
 function useDebounce(value: string, delay: number) {
   const [debouncedValue, setDebouncedValue] = useState(value);
 
   useEffect(() => {
-    // Seta um timer para atualizar o valor
     const handler = setTimeout(() => {
       setDebouncedValue(value);
     }, delay);
 
-    // Limpa o timer se o valor mudar (usuário continua digitando)
     return () => {
       clearTimeout(handler);
     };
-  }, [value, delay]); // Roda de novo só se o valor ou o delay mudar
+  }, [value, delay]);
 
   return debouncedValue;
 }
 
 export default function HomePage() {
-  const [products, setProducts] = useState<Product[]>([]); 
-  const [categories, setCategories] = useState<any[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
 
-  // --- Estados de Busca e Filtro ---
-  const [searchQuery, setSearchQuery] = useState(''); // O que o usuário digita
-  const [storeFilter, setStoreFilter] = useState<'all' | 'platzi' | 'fake-store'>('all');
-  
-  // 2. O valor "atrasado" (debounce) da busca
-  const debouncedSearchQuery = useDebounce(searchQuery, 300); // Atraso de 300ms
+  const debouncedSearchQuery = useDebounce(searchQuery, 300);
+
+  const loadProducts = async (query?: string) => {
+    setLoading(true);
+    const data = await getProducts(query);
+    setProducts(data);
+    setLoading(false);
+  };
 
   useEffect(() => {
-    const loadData = async () => {
+    loadProducts();
+  }, []);
+
+  // 2. Carregando dados do seu Backend (PostgreSQL)
+  const loadData = async () => {
+    try {
       setLoading(true);
-      const [fetchedProducts, fetchedCategories] = await Promise.all([
-        fetchAggregatedProducts(),
-        fetchPlatziCategories()
-      ]);
+      const fetchedProducts = await getProducts();
       setProducts(fetchedProducts);
-      setCategories(fetchedCategories);
+    } catch (error) {
+      console.error("Erro ao carregar produtos:", error);
+    } finally {
       setLoading(false);
-    };
+    }
+  };
+
+  useEffect(() => {
     loadData();
   }, []);
 
-  // 3. A lógica de filtro agora usa o valor "atrasado"
+  const handleSearch = (text: string) => {
+    setSearchQuery(text);
+    loadProducts(text);
+  };
+
+  // 3. Lógica de filtro atualizada (usando 'name' em vez de 'title')
   const filteredProducts = useMemo(() => {
     let items = products;
 
-    if (storeFilter !== 'all') {
-      items = items.filter(product => product.apiSource === storeFilter);
-    }
-
-    // Usa o 'debouncedSearchQuery' aqui!
     if (debouncedSearchQuery.trim() !== '') {
       const lowerCaseQuery = debouncedSearchQuery.toLowerCase();
-      items = items.filter(product => 
-        product.title.toLowerCase().includes(lowerCaseQuery)
+      items = items.filter(product =>
+        product.name.toLowerCase().includes(lowerCaseQuery)
       );
     }
     return items;
-  }, [products, debouncedSearchQuery, storeFilter]); // Só recalcula quando o debounce mudar
+  }, [products, debouncedSearchQuery]);
 
 
   const handleProductPress = (product: Product) => {
@@ -86,217 +93,128 @@ export default function HomePage() {
   };
 
   if (loading) {
-    return <View style={styles.loaderContainer}><ActivityIndicator size="large" color={Colors.primary} /></View>;
+    return (
+      <View style={styles.loaderContainer}>
+        <ActivityIndicator size="large" color={Colors.primary} />
+      </View>
+    );
   }
 
-  // --- Componentes de Renderização ---
-
-  const renderCategory = ({ item }: { item: any }) => (
-    <TouchableOpacity style={styles.categoryItem}>
-      <Image source={{ uri: item.image }} style={styles.categoryImage} />
-      <Text style={styles.categoryName} numberOfLines={1}>{item.name}</Text>
-    </TouchableOpacity>
-  );
-
+  // 4. Renderização do Produto (Ajustado para o novo modelo de dados)
   const renderProduct = ({ item }: { item: Product }) => (
     <TouchableOpacity style={styles.card} onPress={() => handleProductPress(item)}>
-      <Image source={{ uri: item.image }} style={styles.cardImage} resizeMode="contain" />
-      <Text style={styles.cardApiSource}>{item.apiSource === 'platzi' ? 'Loja 1' : 'Loja 2'}</Text>
-      <Text style={styles.cardTitle} numberOfLines={2}>{item.title}</Text>
+      <Image
+        source={{ uri: item.image }}
+        style={styles.cardImage}
+        resizeMode="contain"
+      />
+      {/* Exibe a categoria do produto como uma tag */}
+      <Text style={styles.cardCategory}>{item.category}</Text>
+      <Text style={styles.cardTitle} numberOfLines={2}>{item.name}</Text>
       <Text style={styles.cardPrice}>R$ {item.price.toFixed(2)}</Text>
+      <Text style={styles.cardSold}>{item.sold || 0} vendidos</Text>
     </TouchableOpacity>
   );
 
-  // 4. O Cabeçalho da Lista (AGORA SEM A BARRA DE BUSCA)
   const renderHeader = () => (
     <>
-      {/* --- FILTRO DE LOJA --- */}
-      <Text style={styles.sectionTitle}>Filtrar por Loja</Text>
-      <View style={styles.storeFilterContainer}>
-        {/* ... (Botões de filtro de loja - sem alteração) ... */}
-         <TouchableOpacity
-          style={[styles.storeButton, storeFilter === 'all' && styles.storeButtonActive]}
-          onPress={() => setStoreFilter('all')}
-        >
-          <Text style={[styles.storeButtonText, storeFilter === 'all' && styles.storeButtonTextActive]}>Todas</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.storeButton, storeFilter === 'platzi' && styles.storeButtonActive]}
-          onPress={() => setStoreFilter('platzi')}
-        >
-          <Text style={[styles.storeButtonText, storeFilter === 'platzi' && styles.storeButtonTextActive]}>Loja 1 (Platzi)</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.storeButton, storeFilter === 'fake-store' && styles.storeButtonActive]}
-          onPress={() => setStoreFilter('fake-store')}
-        >
-          <Text style={[styles.storeButtonText, storeFilter === 'fake-store' && styles.storeButtonTextActive]}>Loja 2 (Fake API)</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* --- CATEGORIAS --- */}
-      <Text style={styles.sectionTitle}>Categorias</Text>
-      <FlatList
-        data={categories}
-        renderItem={renderCategory}
-        keyExtractor={(item) => item.id.toString()}
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.categoryList}
-      />
-
-      <Text style={styles.sectionTitle}>Produtos</Text>
+      <Text style={styles.sectionTitle}>Produtos para Você</Text>
     </>
   );
 
-  // 5. O RETORNO PRINCIPAL
   return (
     <View style={styles.container}>
-      {/* --- BARRA DE BUSCA (FORA DA LISTA) --- */}
+      {/* BARRA DE BUSCA */}
       <View style={styles.searchContainer}>
         <Ionicons name="search" size={20} color={Colors.grey} style={styles.searchIcon} />
         <TextInput
           style={styles.searchInput}
-          placeholder="Buscar por item..."
+          placeholder="Buscar no Insinuante..."
           value={searchQuery}
-          onChangeText={setSearchQuery} // 👈 Atualiza o 'searchQuery' (rápido)
+          onChangeText={setSearchQuery}
           placeholderTextColor={Colors.grey}
         />
       </View>
 
-      {/* --- A LISTA --- */}
+      {/* LISTA DE PRODUTOS */}
       <FlatList
-        data={filteredProducts} // Usa os produtos filtrados (pelo debounce)
+        data={filteredProducts}
         ListHeaderComponent={renderHeader}
         renderItem={renderProduct}
         keyExtractor={(item) => item.id}
         numColumns={2}
         contentContainerStyle={styles.list}
-        keyboardDismissMode="on-drag" // Teclado some ao rolar
+        keyboardDismissMode="on-drag"
         ListEmptyComponent={
-          <Text style={styles.emptySearchText}>Nenhum produto encontrado para sua busca.</Text>
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptySearchText}>Nenhum produto cadastrado ainda.</Text>
+            <TouchableOpacity onPress={loadData} style={styles.refreshButton}>
+              <Text style={styles.refreshButtonText}>Atualizar</Text>
+            </TouchableOpacity>
+          </View>
         }
       />
     </View>
   );
 }
 
-// --- ESTILOS (Sem grandes mudanças) ---
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.lightGrey },
-  loaderContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.white },
-  list: { paddingHorizontal: 8 },
-  emptySearchText: {
-    textAlign: 'center',
-    marginTop: 50,
-    fontSize: 16,
-    color: Colors.grey
-  },
+  container: { flex: 1, backgroundColor: '#f5f5f5' },
+  loaderContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff' },
+  list: { paddingHorizontal: 8, paddingBottom: 20 },
   sectionTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: 'bold',
     color: '#333',
-    marginHorizontal: 16,
-    marginTop: 16,
-    marginBottom: 8,
+    marginHorizontal: 8,
+    marginTop: 15,
+    marginBottom: 10,
   },
-  // --- Estilos da Busca ---
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.white,
-    borderRadius: 10,
+    backgroundColor: '#fff',
+    borderRadius: 8,
     marginHorizontal: 16,
     marginTop: 10,
-    marginBottom: 5, // Espaço entre a busca e o resto
-    paddingHorizontal: 10,
+    marginBottom: 5,
+    paddingHorizontal: 12,
+    height: 45,
     elevation: 2,
     shadowColor: '#000',
     shadowOpacity: 0.1,
-    shadowRadius: 5,
+    shadowRadius: 3,
+    shadowOffset: { width: 0, height: 2 },
   },
-  searchIcon: {
-    marginRight: 8,
-  },
-  searchInput: {
-    flex: 1,
-    height: 45,
-    fontSize: 16,
-    color: '#333', 
-  },
-  // --- Estilos do Filtro de Loja ---
-  storeFilterContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginHorizontal: 16,
-    marginBottom: 10,
-  },
-  storeButton: {
-    flex: 1,
-    padding: 8,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: Colors.primary,
-    alignItems: 'center',
-    marginHorizontal: 4,
-  },
-  storeButtonActive: {
-    backgroundColor: Colors.primary,
-  },
-  storeButtonText: {
-    color: Colors.primary,
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  storeButtonTextActive: {
-    color: Colors.white,
-  },
-  // --- Estilos do Card ---
+  searchIcon: { marginRight: 8 },
+  searchInput: { flex: 1, fontSize: 15, color: '#333' },
   card: {
     flex: 1,
-    margin: 8,
-    backgroundColor: Colors.white,
-    borderRadius: 10,
-    padding: 12,
-    elevation: 3,
+    margin: 6,
+    backgroundColor: '#fff',
+    borderRadius: 4,
+    padding: 10,
+    elevation: 2,
     shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 5,
-    shadowOffset: { width: 0, height: 2 },
-    alignItems: 'center',
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    alignItems: 'flex-start',
   },
-  cardImage: {
-    width: 120,
-    height: 120,
-    marginBottom: 10,
-  },
-  cardApiSource: {
+  cardImage: { width: '100%', height: 150, marginBottom: 8 },
+  cardCategory: {
     fontSize: 10,
-    color: Colors.white,
-    backgroundColor: Colors.secondary,
+    color: Colors.primary,
+    backgroundColor: '#fff0ee',
     paddingHorizontal: 6,
     paddingVertical: 2,
-    borderRadius: 8,
-    overflow: 'hidden',
-    position: 'absolute',
-    top: 8,
-    right: 8,
+    borderRadius: 2,
+    marginBottom: 5,
   },
-  cardTitle: {
-    fontSize: 14,
-    fontWeight: '500',
-    textAlign: 'center',
-    height: 40,
-  },
-  cardPrice: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: Colors.primary,
-    marginTop: 6,
-  },
-  // --- Estilos da Categoria ---
-  categoryList: { paddingHorizontal: 16, paddingBottom: 10 },
-  categoryItem: { marginRight: 12, alignItems: 'center', width: 80 },
-  categoryImage: { width: 60, height: 60, borderRadius: 30, backgroundColor: '#eee', borderWidth: 2, borderColor: Colors.primary },
-  categoryName: { marginTop: 5, fontSize: 12, color: '#555', textAlign: 'center' },
+  cardTitle: { fontSize: 13, color: '#333', height: 36, marginBottom: 4 },
+  cardPrice: { fontSize: 16, fontWeight: 'bold', color: Colors.primary },
+  cardSold: { fontSize: 11, color: '#888', marginTop: 4 },
+  emptyContainer: { alignItems: 'center', marginTop: 100 },
+  emptySearchText: { fontSize: 16, color: '#999', marginBottom: 20 },
+  refreshButton: { backgroundColor: Colors.primary, paddingHorizontal: 20, paddingVertical: 10, borderRadius: 5 },
+  refreshButtonText: { color: '#fff', fontWeight: 'bold' },
 });

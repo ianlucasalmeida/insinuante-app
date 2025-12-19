@@ -1,114 +1,75 @@
-import React, { useState, useCallback } from 'react';
-import { 
-  View, 
-  Text, 
-  FlatList, 
-  StyleSheet, 
-  ActivityIndicator, 
-  Alert // <-- ⚡ CORREÇÃO AQUI
-} from 'react-native';
+import React, { useEffect, useState, useCallback } from 'react';
+import { View, Text, FlatList, StyleSheet, ActivityIndicator, RefreshControl } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
 import axios from 'axios';
 import { Colors } from '../../constants/Colors';
 import { useFocusEffect } from 'expo-router';
 
-// 🚨 IMPORTANTE: Verifique se este IP (192.168.0.103) ainda é o IP do seu Fedora!
-// Se o "Network Error" continuar, é porque seu IP mudou.
-const API_URL = 'http://192.168.1.73:3001'; 
+const API_URL = 'http://192.168.1.64:3333'; // 🚨 Use seu IP atual
 
-export default function OrdersPage() {
+export default function MyOrders() {
   const { user } = useAuth();
-  const [orders, setOrders] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   const fetchOrders = async () => {
     if (!user) return;
-    setLoading(true);
     try {
-      // Busca pedidos e ordena do mais novo para o mais antigo
-      const response = await axios.get(`${API_URL}/orders?userId=${user.id}&_sort=createdAt&_order=desc`);
+      const response = await axios.get(`${API_URL}/orders/customer/${user.id}`);
       setOrders(response.data);
     } catch (e) {
-      // Agora o Alert.alert() vai funcionar
-      Alert.alert('Erro', 'Não foi possível carregar seus pedidos.');
-      console.error("Erro ao buscar pedidos:", e); // Adiciona um log
+      console.error(e);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
-  useFocusEffect(
-    useCallback(() => {
-      fetchOrders();
-    }, [user])
-  );
-
-  if (loading) {
-    return <ActivityIndicator size="large" color={Colors.primary} style={styles.loader} />;
-  }
-
-  if (orders.length === 0) {
-    return <View style={styles.container}><Text style={styles.emptyText}>Você ainda não fez nenhum pedido.</Text></View>;
-  }
+  useFocusEffect(useCallback(() => { fetchOrders(); }, [user]));
 
   const renderOrder = ({ item }: { item: any }) => (
     <View style={styles.orderCard}>
       <View style={styles.orderHeader}>
-        <Text style={styles.orderId}>Pedido #{item.id}</Text>
-        <Text style={styles.orderDate}>
-          {new Date(item.createdAt).toLocaleDateString('pt-BR')}
+        <Text style={styles.orderId}>Pedido #{item.id.slice(0, 8)}</Text>
+        <Text style={[styles.status, { color: item.status === 'A Enviar' ? Colors.primary : '#2ecc71' }]}>
+          {item.status}
         </Text>
       </View>
-      <View style={styles.orderBody}>
-        {/* Lista os itens comprados */}
-        {item.items.map((prod: any, index: number) => (
-          <Text key={index} style={styles.orderItem}>
-            {prod.quantity}x {prod.name}
-          </Text>
+      <Text style={styles.date}>{new Date(item.date).toLocaleDateString('pt-BR')}</Text>
+      <View style={styles.itemsPreview}>
+        {item.items.map((prod: any) => (
+          <Text key={prod.id} style={styles.itemText}>• {prod.name} (x{prod.quantity})</Text>
         ))}
       </View>
-      <View style={styles.orderFooter}>
-        <Text style={styles.orderTotal}>Total: R$ {item.total}</Text>
-      </View>
+      <Text style={styles.total}>Total: R$ {item.total.toFixed(2)}</Text>
     </View>
   );
+
+  if (loading) return <ActivityIndicator size="large" color={Colors.primary} style={{flex: 1}} />;
 
   return (
     <View style={styles.container}>
       <FlatList
         data={orders}
-        keyExtractor={(item) => item.id.toString()}
+        keyExtractor={(item) => item.id}
         renderItem={renderOrder}
-        contentContainerStyle={{ padding: 10 }}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={fetchOrders} />}
+        ListEmptyComponent={<Text style={styles.empty}>Você ainda não fez nenhum pedido.</Text>}
       />
     </View>
   );
 }
 
-// --- ESTILOS ---
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.lightGrey },
-  loader: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  emptyText: { marginTop: 50, textAlign: 'center', fontSize: 18, color: Colors.grey },
-  orderCard: {
-    backgroundColor: Colors.white,
-    borderRadius: 8,
-    padding: 15,
-    marginVertical: 8,
-    elevation: 2,
-  },
-  orderHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    borderBottomWidth: 1,
-    borderColor: '#eee',
-    paddingBottom: 10,
-    marginBottom: 10,
-  },
-  orderId: { fontSize: 16, fontWeight: 'bold', color: Colors.primary },
-  orderDate: { fontSize: 14, color: Colors.grey },
-  orderBody: { marginBottom: 10 },
-  orderItem: { fontSize: 14, color: '#444', marginBottom: 4 },
-  orderFooter: { paddingTop: 10, borderTopWidth: 1, borderColor: '#eee' },
-  orderTotal: { fontSize: 16, fontWeight: 'bold', textAlign: 'right' },
+  container: { flex: 1, backgroundColor: '#f5f5f5', padding: 10 },
+  orderCard: { backgroundColor: '#fff', padding: 15, borderRadius: 10, marginBottom: 15, elevation: 2 },
+  orderHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 },
+  orderId: { fontWeight: 'bold', fontSize: 16 },
+  status: { fontWeight: 'bold' },
+  date: { color: '#888', marginBottom: 10 },
+  itemsPreview: { borderTopWidth: 1, borderTopColor: '#eee', paddingTop: 10, marginBottom: 10 },
+  itemText: { color: '#555', fontSize: 14 },
+  total: { fontWeight: 'bold', fontSize: 18, textAlign: 'right', color: Colors.primary },
+  empty: { textAlign: 'center', marginTop: 50, color: '#888' }
 });

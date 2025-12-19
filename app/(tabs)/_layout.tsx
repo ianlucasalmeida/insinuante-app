@@ -35,11 +35,18 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => <Ionicons name="list" size={24} color={color} />,
         }}
       />
-       <Tabs.Screen
+      <Tabs.Screen
         name="perfil"
         options={{
           title: 'Perfil',
           tabBarIcon: ({ color }) => <Ionicons name="person" size={24} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="favoritos"
+        options={{
+          title: 'Favoritos',
+          tabBarIcon: ({ color }) => <Ionicons name="heart" size={24} color={color} />,
         }}
       />
     </Tabs>

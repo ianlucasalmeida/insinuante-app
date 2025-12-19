@@ -52,7 +52,7 @@ export default function ProfilePage() {
         <ProfileMenuItem
           icon="heart-outline"
           text="Favoritos"
-          onPress={() => alert('Tela de Favoritos (a construir)')}
+          onPress={() => router.push('/favoritos')}
         />
       </View>
 

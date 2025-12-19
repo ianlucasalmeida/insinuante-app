@@ -27,7 +27,6 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => <Ionicons name="cart" size={24} color={color} />,
         }}
       />
-      {/* ABA NOVA ADICIONADA AQUI */}
       <Tabs.Screen
         name="pedidos"
         options={{

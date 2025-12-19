@@ -25,6 +25,22 @@ export default function Cadastro() {
   const [neighborhood, setNeighborhood] = useState(''); // Bairro
   const [city, setCity] = useState('');
   const [state, setState] = useState(''); // UF
+  const maskCPF = (value: string) => {
+    return value
+      .replace(/\D/g, '') // Remove tudo o que não é dígito
+      .replace(/(\d{3})(\d)/, '$1.$2') // Coloca ponto após os primeiros 3 dígitos
+      .replace(/(\d{3})(\d)/, '$1.$2') // Coloca ponto após os segundos 3 dígitos
+      .replace(/(\d{3})(\d{1,2})/, '$1-$2') // Coloca hífen após os terceiros 3 dígitos
+      .replace(/(-\d{2})\d+?$/, '$1'); // Limita a 11 dígitos numéricos
+  };
+
+  const maskDate = (value: string) => {
+    return value
+      .replace(/\D/g, '') // Remove tudo o que não é dígito
+      .replace(/(\d{2})(\d)/, '$1/$2') // Coloca barra após o dia
+      .replace(/(\d{2})(\d)/, '$1/$2') // Coloca barra após o mês
+      .replace(/(\d{4})\d+?$/, '$1'); // Limita a 8 dígitos numéricos (DD/MM/AAAA)
+  };
 
   // ⚡ FUNÇÃO DA API VIACEP
   const fetchAddressByCep = async (cepValue: string) => {
@@ -32,7 +48,7 @@ export default function Cadastro() {
     if (formattedCep.length !== 8) {
       return; // Não faz nada se não tiver 8 dígitos
     }
-    
+
     setLoadingCep(true);
     try {
       const response = await axios.get(`https://viacep.com.br/ws/${formattedCep}/json/`);
@@ -89,9 +105,23 @@ export default function Cadastro() {
         <Text style={styles.sectionTitle}>Dados Pessoais</Text>
         <TextInput style={styles.input} placeholder="Nome Completo" value={name} onChangeText={setName} />
         <TextInput style={styles.input} placeholder="Email" value={email} onChangeText={setEmail} keyboardType="email-address" />
-        <TextInput style={styles.input} placeholder="CPF" value={cpf} onChangeText={setCpf} keyboardType="numeric" />
+        <TextInput
+          style={styles.input}
+          placeholder="CPF (000.000.000-00)"
+          value={cpf}
+          onChangeText={(text) => setCpf(maskCPF(text))} // Aplica a máscara aqui
+          keyboardType="numeric"
+          maxLength={14} // Tamanho máximo com pontos e hífen
+        />
         <TextInput style={styles.input} placeholder="Telefone" value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
-        <TextInput style={styles.input} placeholder="Data de Nascimento (AAAA-MM-DD)" value={birthdate} onChangeText={setBirthdate} />
+        <TextInput
+          style={styles.input}
+          placeholder="Data de Nascimento (DD/MM/AAAA)" // Placeholder atualizado
+          value={birthdate}
+          onChangeText={(text) => setBirthdate(maskDate(text))} // Aplica a máscara aqui
+          keyboardType="numeric"
+          maxLength={10} // Tamanho máximo com as barras
+        />
         <TextInput style={styles.input} placeholder="Senha" value={password} onChangeText={setPassword} secureTextEntry />
 
         <Text style={styles.sectionTitle}>Endereço Principal</Text>
@@ -107,7 +137,7 @@ export default function Cadastro() {
           />
           {loadingCep && <ActivityIndicator size="small" color={Colors.primary} />}
         </View>
-        
+
         <TextInput style={styles.input} placeholder="Logradouro (Rua, Av.)" value={street} onChangeText={setStreet} />
         <TextInput style={styles.input} placeholder="Bairro" value={neighborhood} onChangeText={setNeighborhood} />
         <View style={styles.row}>
@@ -118,13 +148,13 @@ export default function Cadastro() {
           <TextInput style={[styles.input, styles.flexLarge]} placeholder="Cidade" value={city} onChangeText={setCity} />
           <TextInput style={[styles.input, styles.flexSmall]} placeholder="UF" value={state} onChangeText={setState} maxLength={2} />
         </View>
-        
+
         <View style={styles.buttonContainer}>
           <Button title="Cadastrar" onPress={handleRegister} color={Colors.primary} />
         </View>
-        
+
         <TouchableOpacity onPress={() => router.back()}>
-           <Text style={styles.link}>Já tem conta? Faça Login</Text>
+          <Text style={styles.link}>Já tem conta? Faça Login</Text>
         </TouchableOpacity>
       </View>
     </ScrollView>

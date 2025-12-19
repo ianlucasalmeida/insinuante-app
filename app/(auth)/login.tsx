@@ -25,7 +25,7 @@ export default function Login() {
       <Text style={styles.title}>Shopee</Text>
       <TextInput
         style={styles.input}
-        placeholder="Email (teste@shopee.com)"
+        placeholder="Email"
         value={email}
         onChangeText={setEmail}
         keyboardType="email-address"
@@ -34,7 +34,7 @@ export default function Login() {
       />
       <TextInput
         style={styles.input}
-        placeholder="Senha (123)"
+        placeholder="Senha"
         value={password}
         onChangeText={setPassword}
         secureTextEntry

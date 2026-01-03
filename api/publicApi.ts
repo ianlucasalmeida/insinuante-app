@@ -9,11 +9,17 @@ export interface Product {
   price: number;
   stock: number;
   category: string;
-  image: string;       // Imagem principal
-  images: string[];    // Array de imagens
+  image: string;
+  images: string[];
   rating?: number;
   reviews?: number;
   sold?: number;
+  // 👈 ADICIONA ESTE CAMPO:
+  shop?: {
+    id: string;
+    name: string;
+    image: string;
+  };
 }
 
 export interface OrderItem {

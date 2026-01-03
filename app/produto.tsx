@@ -1,18 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, Button, StyleSheet, Alert, ScrollView, Image, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, Alert, ScrollView, Image, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Stack, useLocalSearchParams, router } from 'expo-router';
-import { Product, toggleFavorite, getUserFavorites } from '../api/publicApi'; //
+import { Product, toggleFavorite, getUserFavorites } from '../api/publicApi';
 import { Colors } from '../constants/Colors';
-import { useAuth } from '../context/AuthContext'; //
+import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
 import { Ionicons } from '@expo/vector-icons';
 
-
-const API_URL = 'http://192.168.1.64:3333';
+// 🚨 LEMBRE-SE DE USAR O IP ATUALIZADO (ex: 192.168.1.73)
+const API_URL = 'http://192.168.1.64:3333'; 
 
 export default function ProductDetail() {
   const { product: productString } = useLocalSearchParams();
-  const { user } = useAuth(); //
+  const { user } = useAuth();
 
   const [isFavorited, setIsFavorited] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
@@ -21,9 +21,8 @@ export default function ProductDetail() {
     return <Text style={styles.errorText}>Produto não encontrado.</Text>;
   }
 
-  const product: Product = JSON.parse(productString); //
+  const product: Product = JSON.parse(productString);
 
-  // 1. Verificar se o produto já está favoritado ao carregar
   useEffect(() => {
     const checkFavoriteStatus = async () => {
       if (user && product.id) {
@@ -38,54 +37,37 @@ export default function ProductDetail() {
     checkFavoriteStatus();
   }, [user, product.id]);
 
-  // 2. Alternar Favorito (Coração)
   const handleToggleFavorite = async () => {
     if (!user) {
-      Alert.alert('Ação Necessária', 'Inicie sessão para guardar favoritos.', [
-        { text: 'Login', onPress: () => router.push('/(auth)/login') },
-        { text: 'Cancelar', style: 'cancel' }
-      ]);
+      Alert.alert('Login', 'Inicie sessão para favoritar.', [{ text: 'Login', onPress: () => router.push('/(auth)/login') }]);
       return;
     }
-
     try {
       const result = await toggleFavorite(user.id.toString(), product.id);
       setIsFavorited(result.favorited);
     } catch (e) {
-      Alert.alert('Erro', 'Não foi possível atualizar os seus favoritos.');
+      Alert.alert('Erro', 'Erro ao atualizar favoritos.');
     }
   };
 
-  // 3. Adicionar ao Carrinho (Rota Profissional /cart)
   const handleAddToCart = async () => {
     if (!user) {
-      Alert.alert('Login Necessário', 'Inicie sessão para comprar.', [
-        { text: 'Fazer Login', onPress: () => router.push('/(auth)/login') }
-      ]);
+      Alert.alert('Login', 'Inicie sessão para comprar.', [{ text: 'Login', onPress: () => router.push('/(auth)/login') }]);
       return;
     }
-
     setIsAdding(true);
     try {
-      // O Prisma no backend já verifica se o item existe e soma a quantidade!
-      const cartItem = {
+      await axios.post(`${API_URL}/cart`, {
         userId: user.id.toString(),
         productId: product.id,
         name: product.name,
         price: product.price,
         image: product.image,
         quantity: 1,
-      };
-
-      // Rota unificada no singular: /cart
-      await axios.post(`${API_URL}/cart`, cartItem);
-
-      Alert.alert('Sucesso!', 'Produto adicionado ao seu carrinho.');
+      });
       router.push('/(tabs)/carrinho');
-
     } catch (e) {
-      console.error("Erro ao adicionar ao carrinho:", e);
-      Alert.alert('Erro', 'Ocorreu um problema ao conectar com o servidor.');
+      Alert.alert('Erro', 'Erro ao conectar com o servidor.');
     } finally {
       setIsAdding(false);
     }
@@ -95,71 +77,114 @@ export default function ProductDetail() {
     <>
       <Stack.Screen
         options={{
-          title: 'Detalhes do Produto',
+          title: 'Produto',
           headerStyle: { backgroundColor: Colors.primary },
           headerTintColor: Colors.white,
-          headerTitleAlign: 'center',
-          // Ícone de Favorito no Cabeçalho
           headerRight: () => (
             <TouchableOpacity onPress={handleToggleFavorite} style={{ marginRight: 15 }}>
-              <Ionicons
-                name={isFavorited ? "heart" : "heart-outline"}
-                size={28}
-                color={isFavorited ? "#ff424e" : Colors.white}
-              />
+              <Ionicons name={isFavorited ? "heart" : "heart-outline"} size={28} color={isFavorited ? "#ff424e" : Colors.white} />
             </TouchableOpacity>
           ),
         }}
       />
 
       <ScrollView style={styles.container}>
-        <View style={styles.imageContainer}>
-          <Image source={{ uri: product.image }} style={styles.image} resizeMode="contain" />
-        </View>
+        <Image source={{ uri: product.image }} style={styles.mainImage} resizeMode="contain" />
 
-        <View style={styles.details}>
+        <View style={styles.infoContainer}>
           <Text style={styles.title}>{product.name}</Text>
           <Text style={styles.price}>R$ {product.price.toFixed(2)}</Text>
+          
+          <View style={styles.divider} />
+
+          {/* 🏪 SEÇÃO DO VENDEDOR (ESTILO SHOPEE) */}
+          <View style={styles.sellerSection}>
+            <View style={styles.sellerHeader}>
+              <Image 
+                source={{ uri: product.shop?.image || 'https://placehold.co/100' }} 
+                style={styles.sellerAvatar} 
+              />
+              <View style={styles.sellerInfo}>
+                <Text style={styles.sellerName}>{product.shop?.name || 'Loja Parceira'}</Text>
+                <Text style={styles.sellerStatus}>Ativo há 12 min</Text>
+              </View>
+              <TouchableOpacity style={styles.viewShopButton}>
+                <Text style={styles.viewShopText}>Ver Loja</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.sellerStats}>
+              <View style={styles.statItem}>
+                <Text style={styles.statValue}>125</Text>
+                <Text style={styles.statLabel}>Produtos</Text>
+              </View>
+              <View style={styles.statDivider} />
+              <View style={styles.statItem}>
+                <Text style={styles.statValue}>4.9</Text>
+                <Text style={styles.statLabel}>Avaliação</Text>
+              </View>
+              <View style={styles.statDivider} />
+              <View style={styles.statItem}>
+                <Text style={styles.statValue}>99%</Text>
+                <Text style={styles.statLabel}>Chat</Text>
+              </View>
+            </View>
+          </View>
 
           <View style={styles.divider} />
 
-          <Text style={styles.sectionTitle}>Descrição</Text>
+          <Text style={styles.sectionTitle}>Descrição do Produto</Text>
           <Text style={styles.description}>{product.description}</Text>
-
-          <View style={styles.buttonContainer}>
-            <TouchableOpacity
-              style={[styles.buyButton, isAdding && { opacity: 0.7 }]}
-              onPress={handleAddToCart}
-              disabled={isAdding}
-            >
-              <Text style={styles.buyButtonText}>
-                {isAdding ? 'Processando...' : 'Adicionar ao Carrinho'}
-              </Text>
-            </TouchableOpacity>
-          </View>
         </View>
       </ScrollView>
+
+      {/* Botão de Rodapé */}
+      <View style={styles.footer}>
+        <TouchableOpacity 
+          style={styles.cartButton} 
+          onPress={handleAddToCart}
+          disabled={isAdding}
+        >
+          {isAdding ? <ActivityIndicator color="#fff" /> : (
+            <>
+              <Ionicons name="cart-outline" size={24} color="#fff" />
+              <Text style={styles.cartButtonText}> Adicionar ao Carrinho</Text>
+            </>
+          )}
+        </TouchableOpacity>
+      </View>
     </>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.white },
-  imageContainer: { backgroundColor: '#f9f9f9', width: '100%', height: 350, justifyContent: 'center' },
-  image: { width: '100%', height: '100%' },
-  details: { padding: 20 },
-  title: { fontSize: 22, fontWeight: 'bold', marginBottom: 8, color: '#333' },
-  price: { fontSize: 28, fontWeight: 'bold', color: Colors.primary, marginBottom: 15 },
-  divider: { height: 1, backgroundColor: '#eee', marginVertical: 15 },
-  sectionTitle: { fontSize: 18, fontWeight: 'bold', color: '#333', marginBottom: 10 },
-  description: { fontSize: 16, color: '#666', lineHeight: 24, marginBottom: 30 },
-  buttonContainer: { marginBottom: 30 },
-  buyButton: {
-    backgroundColor: Colors.primary,
-    padding: 18,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  buyButtonText: { color: Colors.white, fontSize: 18, fontWeight: 'bold' },
-  errorText: { textAlign: 'center', marginTop: 50, fontSize: 18, color: 'red' }
+  container: { flex: 1, backgroundColor: '#f5f5f5' },
+  mainImage: { width: '100%', height: 350, backgroundColor: '#fff' },
+  infoContainer: { padding: 15, backgroundColor: '#fff' },
+  title: { fontSize: 20, fontWeight: '400', color: '#333', marginBottom: 8 },
+  price: { fontSize: 24, fontWeight: 'bold', color: Colors.primary, marginBottom: 15 },
+  divider: { height: 1, backgroundColor: '#f0f0f0', marginVertical: 15 },
+  
+  // Estilos da Seção do Vendedor
+  sellerSection: { paddingVertical: 5 },
+  sellerHeader: { flexDirection: 'row', alignItems: 'center' },
+  sellerAvatar: { width: 45, height: 45, borderRadius: 25, borderWidth: 1, borderColor: '#eee' },
+  sellerInfo: { flex: 1, marginLeft: 12 },
+  sellerName: { fontSize: 16, fontWeight: '500', color: '#333' },
+  sellerStatus: { fontSize: 12, color: '#999' },
+  viewShopButton: { borderWidth: 1, borderColor: Colors.primary, paddingHorizontal: 12, paddingVertical: 5, borderRadius: 2 },
+  viewShopText: { color: Colors.primary, fontSize: 13 },
+  sellerStats: { flexDirection: 'row', marginTop: 15, justifyContent: 'space-around' },
+  statItem: { alignItems: 'center' },
+  statValue: { color: Colors.primary, fontWeight: 'bold', fontSize: 14 },
+  statLabel: { fontSize: 11, color: '#777' },
+  statDivider: { width: 1, height: 20, backgroundColor: '#eee' },
+
+  sectionTitle: { fontSize: 16, fontWeight: 'bold', color: '#333', marginBottom: 10 },
+  description: { fontSize: 14, color: '#666', lineHeight: 20, marginBottom: 100 },
+  
+  footer: { position: 'absolute', bottom: 0, width: '100%', backgroundColor: '#fff', padding: 12, borderTopWidth: 1, borderTopColor: '#eee' },
+  cartButton: { backgroundColor: Colors.primary, flexDirection: 'row', padding: 15, borderRadius: 5, justifyContent: 'center', alignItems: 'center' },
+  cartButtonText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
+  errorText: { textAlign: 'center', marginTop: 50, color: 'red' }
 });

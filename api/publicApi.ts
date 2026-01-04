@@ -114,4 +114,9 @@ export const getFavoriteProducts = async (userId: string): Promise<Product[]> =>
   }
 };
 
+export const getUserAddresses = async (userId: string) => {
+  const response = await api.get(`/addresses/user/${userId}`);
+  return response.data;
+};
+
 export default api;

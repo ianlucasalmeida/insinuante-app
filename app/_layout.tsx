@@ -1,30 +1,36 @@
 import React, { useEffect } from 'react';
 import { Stack, router, useSegments } from 'expo-router';
 import { AuthProvider, useAuth } from '../context/AuthContext';
-import { View, ActivityIndicator } from 'react-native';
+import { View, ActivityIndicator, Platform } from 'react-native';
 import { Colors } from '../constants/Colors';
 
-// Componente principal que usa o contexto
+// 1. Importação condicional para evitar erro no Web Bundling
+let StripeProvider: any = ({ children }: any) => <>{children}</>;
+try {
+  if (Platform.OS !== 'web') {
+    StripeProvider = require('@stripe/stripe-react-native').StripeProvider;
+  }
+} catch (e) {
+  console.warn("Stripe não pôde ser carregado nativamente.");
+}
+
 const RootLayoutNav = () => {
   const { user, loading } = useAuth();
   const segments = useSegments();
   
   useEffect(() => {
-    if (loading) return; // Espera o contexto carregar o usuário
+    if (loading) return;
 
     const inAuthGroup = segments[0] === '(auth)';
 
     if (user && inAuthGroup) {
-      // Usuário logado, mas na tela de auth? Redireciona para home.
       router.replace('/(tabs)');
     } else if (!user && !inAuthGroup) {
-      // Usuário não logado e não está no grupo de auth? Redireciona para login.
       router.replace('/(auth)/login');
     }
   }, [user, loading, segments]);
 
   if (loading) {
-    // Tela de carregamento enquanto o AsyncStorage é verificado
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.light.background }}>
         <ActivityIndicator size="large" color={Colors.primary} />
@@ -32,7 +38,6 @@ const RootLayoutNav = () => {
     );
   }
 
-  // Define as Stacks (Telas) principais do app
   return (
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="(auth)" />
@@ -55,15 +60,26 @@ const RootLayoutNav = () => {
           headerTintColor: Colors.white,
         }} 
       />
+      <Stack.Screen 
+        name="checkout" 
+        options={{ 
+          headerShown: true, 
+          title: 'Finalizar Compra',
+          headerStyle: { backgroundColor: Colors.primary },
+          headerTintColor: Colors.white,
+        }} 
+      />
     </Stack>
   );
 };
 
-// Layout Raiz que envolve tudo no Provedor de Autenticação
 export default function RootLayout() {
   return (
-    <AuthProvider>
-      <RootLayoutNav />
-    </AuthProvider>
+    // 2. O StripeProvider agora é seguro para Web (será apenas um Fragmento no navegador)
+    <StripeProvider publishableKey="pk_test_51SlebQDdPE3WOrGj0spalcaUxUlcs8Yk6kMjvdx8paQIQMljxkO9XPHf7SmkTPLBN42709zlCEnrc30cAAaqIkH900WicWkJTU">
+      <AuthProvider>
+        <RootLayoutNav />
+      </AuthProvider>
+    </StripeProvider>
   );
 }

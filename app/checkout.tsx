@@ -1,279 +1,236 @@
-import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  Alert,
-  ScrollView,
-  TouchableOpacity,
-  TextInput,
-  Button,
-  ActivityIndicator
-} from 'react-native';
-import { Stack, router, useLocalSearchParams } from 'expo-router';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator, Image, TextInput } from 'react-native';
+import { useLocalSearchParams, router, Stack } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import { Colors } from '../constants/Colors';
-import { Ionicons } from '@expo/vector-icons';
-import { clearUserCart, createOrder } from '../api/publicApi';
+import { getUserAddresses, createOrder, clearUserCart } from '../api/publicApi';
+import { useStripe } from '@stripe/stripe-react-native';
+import axios from 'axios';
 
-
-// 🚨 IMPORTANTE: Use o mesmo IP do AuthContext!
-const API_URL = 'http://192.168.1.64:3333'; // ⚠️ TROQUE AQUI!
+// Mantenha o IP sincronizado com seu Backend
+const API_URL = 'http://192.168.1.64:3333';
 
 export default function CheckoutPage() {
+  const { confirmPayment } = useStripe(); // Hook do Stripe
   const { user } = useAuth();
   const params = useLocalSearchParams();
   const { total, cartItems: cartItemsString } = params;
   const cartItems = JSON.parse(cartItemsString as string);
 
-  const [paymentMethod, setPaymentMethod] = useState('card');
+  const [addresses, setAddresses] = useState<any[]>([]);
+  const [selectedAddress, setSelectedAddress] = useState<string | null>(null);
+  const [paymentMethod, setPaymentMethod] = useState<'card' | 'pix'>('card');
   const [isProcessing, setIsProcessing] = useState(false);
-  const [cardName, setCardName] = useState('');
+
+
   const [cardNumber, setCardNumber] = useState('');
-  const [cardExpiry, setCardExpiry] = useState('');
-  const [cardCvv, setCardCvv] = useState('');
+  const [cardName, setCardName] = useState('');
+  const [expiry, setExpiry] = useState('');
+  const [cvv, setCvv] = useState('');
 
-  const handlePayment = async () => {
-    if (!user) {
-      Alert.alert('Erro', 'Sessão inválida.');
-      return;
+
+  useEffect(() => {
+    if (user) {
+      getUserAddresses(user.id.toString()).then(data => {
+        setAddresses(data);
+        if (data.length > 0) setSelectedAddress(data[0].id);
+      });
     }
+  }, [user]);
 
-    if (paymentMethod === 'card' && (!cardName || !cardNumber || !cardExpiry || !cardCvv)) {
-      Alert.alert('Erro', 'Preencha os dados do cartão.');
-      return;
-    }
-
+  const handleFinalizeOrder = async () => {
     setIsProcessing(true);
 
-    // 2. MAPEAR DADOS PARA O PADRÃO DO BACKEND (PRISMA)
-    const orderData = {
-      customerId: user.id.toString(), // Converte number para string para o Prisma
-      total: parseFloat(total as string),
-      paymentMethod: paymentMethod === 'card' ? 'Cartão' : 'PIX',
-      addressId: "id-padrao",
-      items: cartItems.map((item: any) => ({
-        productId: item.productId || item.id,
-        name: item.name,
-        price: item.price,
-        quantity: item.quantity,
-        image: item.image
-      }))
-    };
-
     try {
-      // 1. Salva o pedido no PostgreSQL (Porta 3333)
-      await createOrder(orderData);
-      await clearUserCart(user.id.toString());
+      // 1. Pedir o clientSecret ao teu Backend
+      const { data: { clientSecret } } = await axios.post(`${API_URL}/payments/intent`, {
+        amount: Math.round(parseFloat(total as string) * 100) // Converte para cêntimos
+      });
 
-      router.replace('/pedido-concluido');
+      // 2. Confirmar o pagamento com os dados do cartão inseridos na tela
+      const { error, paymentIntent } = await confirmPayment(clientSecret, {
+        paymentMethodType: 'Card',
+        paymentMethodData: {
+          billingDetails: { name: user?.name },
+        },
+      });
+
+      if (error) {
+        Alert.alert('Erro no Pagamento', error.message);
+        return;
+      }
+
+      // 3. Se o pagamento foi um sucesso, cria o pedido no teu PostgreSQL
+      if (paymentIntent?.status === 'Succeeded') {
+        const orderData = {
+          customerId: user?.id.toString(),
+          total: parseFloat(total as string),
+          paymentMethod: 'Cartão Stripe',
+          addressId: selectedAddress,
+          items: cartItems.map((item: any) => ({
+            id: item.productId || item.id,
+            name: item.name,
+            price: item.price,
+            quantity: item.quantity,
+            image: item.image
+          }))
+        };
+
+        await createOrder(orderData); //
+        await clearUserCart(user?.id.toString() || '');
+        router.replace('/pedido-concluido');
+      }
     } catch (e) {
-      console.error("Erro no Checkout:", e);
-      Alert.alert('Erro', 'Network Error: Verifique se o servidor está rodando no IP correto.');
+      Alert.alert('Erro', 'Não foi possível processar a transação.');
     } finally {
       setIsProcessing(false);
     }
   };
 
-  // Componente do Formulário de Cartão
-  const CardForm = () => (
-    <View style={styles.form}>
-      <TextInput
-        style={styles.input}
-        placeholder="Nome no Cartão"
-        value={cardName}
-        onChangeText={setCardName}
-        placeholderTextColor={Colors.grey}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Número do Cartão (ex: 4242...)"
-        value={cardNumber}
-        onChangeText={setCardNumber}
-        keyboardType="numeric"
-        placeholderTextColor={Colors.grey}
-      />
-      <View style={styles.row}>
-        <TextInput
-          style={[styles.input, styles.flexHalf]}
-          placeholder="Validade (MM/AA)"
-          value={cardExpiry}
-          onChangeText={setCardExpiry}
-          keyboardType="numeric"
-          placeholderTextColor={Colors.grey}
-        />
-        <TextInput
-          style={[styles.input, styles.flexHalf]}
-          placeholder="CVV"
-          value={cardCvv}
-          onChangeText={setCardCvv}
-          keyboardType="numeric"
-          secureTextEntry
-          placeholderTextColor={Colors.grey}
-        />
-      </View>
-    </View>
-  );
-
-  // Componente de Simulação do PIX
-  const PixDisplay = () => (
-    <View style={styles.pixContainer}>
-      <Text style={styles.pixText}>Pague com PIX para aprovação imediata:</Text>
-      <Ionicons name="qr-code" size={180} color={Colors.black} />
-      <Text style={styles.pixCode} selectable>00020126... (QR Code Simulado)</Text>
-    </View>
-  );
-
   return (
-    <>
-      <Stack.Screen
-        options={{
-          title: 'Pagamento',
-          headerStyle: { backgroundColor: Colors.primary },
-          headerTintColor: Colors.white,
-        }}
-      />
-      <ScrollView style={styles.container}>
-        <View style={styles.summary}>
-          <Text style={styles.summaryText}>Total a Pagar:</Text>
-          <Text style={styles.totalText}>R$ {total}</Text>
+    <View style={styles.mainContainer}>
+      <Stack.Screen options={{ title: 'Finalizar Compra', headerTitleAlign: 'center' }} />
+
+      <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 100 }}>
+
+        {/* Endereço */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="location-outline" size={20} color={Colors.primary} />
+            <Text style={styles.sectionTitle}>Endereço de Entrega</Text>
+          </View>
+          {addresses.map(addr => (
+            <TouchableOpacity
+              key={addr.id}
+              style={[styles.addressCard, selectedAddress === addr.id && styles.selectedCard]}
+              onPress={() => setSelectedAddress(addr.id)}
+            >
+              <Text style={styles.addressText}>{addr.street}, {addr.number} - {addr.city}</Text>
+              {selectedAddress === addr.id && <Ionicons name="checkmark-circle" size={20} color={Colors.primary} />}
+            </TouchableOpacity>
+          ))}
         </View>
 
-        {/* Alternador de Pagamento */}
-        <View style={styles.toggleContainer}>
-          <TouchableOpacity
-            style={[styles.toggleButton, paymentMethod === 'card' && styles.toggleActive]}
-            onPress={() => setPaymentMethod('card')}
-          >
-            <Ionicons name="card" size={20} color={paymentMethod === 'card' ? Colors.white : Colors.primary} />
-            <Text style={[styles.toggleText, paymentMethod === 'card' && styles.toggleTextActive]}> Cartão</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.toggleButton, paymentMethod === 'pix' && styles.toggleActive]}
-            onPress={() => setPaymentMethod('pix')}
-          >
-            <Ionicons name="qr-code" size={20} color={paymentMethod === 'pix' ? Colors.white : Colors.primary} />
-            <Text style={[styles.toggleText, paymentMethod === 'pix' && styles.toggleTextActive]}> PIX</Text>
-          </TouchableOpacity>
+        {/* Itens do Pedido */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Resumo do Pedido</Text>
+          {cartItems.map((item: any) => (
+            <View key={item.id} style={styles.productRow}>
+              <Image source={{ uri: item.image }} style={styles.productImage} />
+              <View style={styles.productInfo}>
+                <Text numberOfLines={1}>{item.name}</Text>
+                <Text style={styles.productPrice}>R$ {item.price.toFixed(2)} x {item.quantity}</Text>
+              </View>
+            </View>
+          ))}
         </View>
 
-        {/* Conteúdo (Formulário ou PIX) */}
-        {paymentMethod === 'card' ? <CardForm /> : <PixDisplay />}
+        {/* Métodos de Pagamento */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Método de Pagamento</Text>
+          <View style={styles.paymentToggle}>
+            <TouchableOpacity
+              style={[styles.methodBtn, paymentMethod === 'card' && styles.methodBtnActive]}
+              onPress={() => setPaymentMethod('card')}
+            >
+              <Ionicons name="card-outline" size={20} color={paymentMethod === 'card' ? '#fff' : '#666'} />
+              <Text style={[styles.methodText, paymentMethod === 'card' && styles.methodTextActive]}>Cartão</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.methodBtn, paymentMethod === 'pix' && styles.methodBtnActive]}
+              onPress={() => setPaymentMethod('pix')}
+            >
+              <Ionicons name="qr-code-outline" size={20} color={paymentMethod === 'pix' ? '#fff' : '#666'} />
+              <Text style={[styles.methodText, paymentMethod === 'pix' && styles.methodTextActive]}>PIX</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Área Dinâmica de Pagamento */}
+          {paymentMethod === 'card' ? (
+            <View style={styles.cardForm}>
+              <TextInput
+                style={styles.input}
+                placeholder="Número do Cartão"
+                keyboardType="numeric"
+                value={cardNumber}
+                onChangeText={setCardNumber}
+              />
+              <TextInput
+                style={styles.input}
+                placeholder="Nome Impresso no Cartão"
+                value={cardName}
+                onChangeText={setCardName}
+              />
+              <View style={styles.row}>
+                <TextInput style={[styles.input, { flex: 1, marginRight: 10 }]} placeholder="MM/AA" value={expiry} onChangeText={setExpiry} />
+                <TextInput style={[styles.input, { flex: 1 }]} placeholder="CVV" keyboardType="numeric" value={cvv} onChangeText={setCvv} />
+              </View>
+            </View>
+          ) : (
+            <View style={styles.pixInfo}>
+              <Text style={styles.pixText}>Você receberá um código PIX para copiar e colar no app do seu banco após clicar em confirmar.</Text>
+            </View>
+          )}
+        </View>
+
+        {/* Resumo de Valores */}
+        <View style={styles.section}>
+          <View style={styles.totalRow}><Text>Subtotal</Text><Text>R$ {total}</Text></View>
+          <View style={styles.totalRow}><Text>Frete</Text><Text style={{ color: 'green' }}>Grátis</Text></View>
+          <View style={[styles.totalRow, { marginTop: 10 }]}><Text style={styles.grandTotalText}>Total</Text><Text style={styles.grandTotalAmount}>R$ {total}</Text></View>
+        </View>
 
       </ScrollView>
 
-      {/* Botão de Pagar (fixo no rodapé) */}
+      {/* Botão Fixo */}
       <View style={styles.footer}>
-        {isProcessing ? (
-          <ActivityIndicator size="large" color={Colors.white} />
-        ) : (
-          <Button
-            title={`Pagar R$ ${total}`}
-            onPress={handlePayment}
-            color={Colors.white}
-            disabled={isProcessing}
-          />
-        )}
+        <TouchableOpacity style={styles.confirmBtn} onPress={handleFinalizeOrder} disabled={isProcessing}>
+          {isProcessing ? <ActivityIndicator color="#fff" /> : <Text style={styles.confirmBtnText}>Confirmar Pedido</Text>}
+        </TouchableOpacity>
       </View>
-    </>
+    </View>
   );
 }
 
-// --- ESTILOS ---
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.lightGrey,
-  },
-  summary: {
-    backgroundColor: Colors.white,
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-    alignItems: 'center',
-  },
-  summaryText: {
-    fontSize: 18,
-    color: Colors.grey,
-  },
-  totalText: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: Colors.primary,
-  },
-  toggleContainer: {
-    flexDirection: 'row',
-    margin: 20,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: Colors.primary,
-    overflow: 'hidden',
-  },
-  toggleButton: {
-    flex: 1,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 12,
-    backgroundColor: Colors.white,
-  },
-  toggleActive: {
-    backgroundColor: Colors.primary,
-  },
-  toggleText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: Colors.primary,
-  },
-  toggleTextActive: {
-    color: Colors.white,
-  },
-  form: {
-    padding: 20,
-    backgroundColor: Colors.white,
-    margin: 20,
-    borderRadius: 8,
-  },
-  input: {
-    height: 50,
-    borderColor: Colors.grey,
-    borderWidth: 1,
-    borderRadius: 8,
-    marginBottom: 15,
-    paddingHorizontal: 15,
-    fontSize: 16,
-  },
-  row: {
+  mainContainer: { flex: 1, backgroundColor: '#f5f5f5' },
+  container: { flex: 1 },
+  section: { backgroundColor: '#fff', padding: 15, marginBottom: 10 },
+  sectionHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
+  sectionTitle: { fontSize: 16, fontWeight: 'bold', marginLeft: 5 },
+  // insinuante-app/app/checkout.tsx
+
+  addressCard: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-  },
-  flexHalf: {
-    flex: 0.48,
-  },
-  pixContainer: {
-    alignItems: 'center',
-    padding: 20,
-    backgroundColor: Colors.white,
-    margin: 20,
+    padding: 12,
+    borderWidth: 1, // 👈 Alterado de borderWeight para borderWidth
+    borderColor: '#eee',
     borderRadius: 8,
+    marginBottom: 8
   },
-  pixText: {
-    fontSize: 16,
-    color: '#333',
-    marginBottom: 20,
-    textAlign: 'center',
-  },
-  pixCode: {
-    fontSize: 14,
-    color: Colors.grey,
-    marginTop: 10,
-    fontWeight: 'bold',
-  },
-  footer: {
-    backgroundColor: Colors.primary,
-    padding: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    height: 90,
-  },
+  selectedCard: { borderColor: Colors.primary, backgroundColor: '#fff5f2' },
+  addressText: { color: '#444', fontSize: 14 },
+  productRow: { flexDirection: 'row', marginBottom: 10, alignItems: 'center' },
+  productImage: { width: 50, height: 50, borderRadius: 4, marginRight: 10 },
+  productInfo: { flex: 1 },
+  productPrice: { color: '#888', fontSize: 13 },
+  paymentToggle: { flexDirection: 'row', gap: 10, marginBottom: 15 },
+  methodBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 12, borderRadius: 8, backgroundColor: '#f0f0f0' },
+  methodBtnActive: { backgroundColor: Colors.primary },
+  methodText: { marginLeft: 8, color: '#666', fontWeight: 'bold' },
+  methodTextActive: { color: '#fff' },
+  cardForm: { gap: 10 },
+  input: { backgroundColor: '#f9f9f9', padding: 12, borderRadius: 8, borderWidth: 1, borderColor: '#ddd' },
+  row: { flexDirection: 'row' },
+  pixInfo: { padding: 15, backgroundColor: '#e3f2fd', borderRadius: 8 },
+  pixText: { color: '#1976d2', fontSize: 13, textAlign: 'center' },
+  totalRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 },
+  grandTotalText: { fontSize: 18, fontWeight: 'bold' },
+  grandTotalAmount: { fontSize: 20, fontWeight: 'bold', color: Colors.primary },
+  footer: { position: 'absolute', bottom: 0, width: '100%', padding: 15, backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#eee' },
+  confirmBtn: { backgroundColor: Colors.primary, padding: 16, borderRadius: 8, alignItems: 'center' },
+  confirmBtnText: { color: '#fff', fontSize: 18, fontWeight: 'bold' }
 });

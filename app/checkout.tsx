@@ -1,18 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator, Image, TextInput } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator, Image } from 'react-native';
 import { useLocalSearchParams, router, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import { Colors } from '../constants/Colors';
 import { getUserAddresses, createOrder, clearUserCart } from '../api/publicApi';
-import { useStripe } from '@stripe/stripe-react-native';
+import { useStripe, CardField } from '@stripe/stripe-react-native';
 import axios from 'axios';
 
-// Mantenha o IP sincronizado com seu Backend
 const API_URL = 'http://192.168.1.64:3333';
 
 export default function CheckoutPage() {
-  const { confirmPayment } = useStripe(); // Hook do Stripe
+  const { confirmPayment } = useStripe();
   const { user } = useAuth();
   const params = useLocalSearchParams();
   const { total, cartItems: cartItemsString } = params;
@@ -23,12 +22,8 @@ export default function CheckoutPage() {
   const [paymentMethod, setPaymentMethod] = useState<'card' | 'pix'>('card');
   const [isProcessing, setIsProcessing] = useState(false);
 
-
-  const [cardNumber, setCardNumber] = useState('');
-  const [cardName, setCardName] = useState('');
-  const [expiry, setExpiry] = useState('');
-  const [cvv, setCvv] = useState('');
-
+  // 1. Removidos estados individuais de número, validade e CVV.
+  // O CardField gerencia isso internamente para o Stripe.
 
   useEffect(() => {
     if (user) {
@@ -40,28 +35,38 @@ export default function CheckoutPage() {
   }, [user]);
 
   const handleFinalizeOrder = async () => {
+    if (!selectedAddress) {
+      Alert.alert('Atenção', 'Selecione um endereço de entrega.');
+      return;
+    }
+
     setIsProcessing(true);
 
     try {
-      // 1. Pedir o clientSecret ao teu Backend
+      // 1. Pedir o clientSecret ao Backend
       const { data: { clientSecret } } = await axios.post(`${API_URL}/payments/intent`, {
-        amount: Math.round(parseFloat(total as string) * 100) // Converte para cêntimos
+        amount: Math.round(parseFloat(total as string) * 100)
       });
 
-      // 2. Confirmar o pagamento com os dados do cartão inseridos na tela
+      // 2. Confirmar o pagamento
+      // O confirmPayment agora detectará automaticamente os dados inseridos no CardField
       const { error, paymentIntent } = await confirmPayment(clientSecret, {
         paymentMethodType: 'Card',
         paymentMethodData: {
-          billingDetails: { name: user?.name },
+          billingDetails: {
+            name: user?.name,
+            email: user?.email
+          },
         },
       });
 
       if (error) {
         Alert.alert('Erro no Pagamento', error.message);
+        setIsProcessing(false);
         return;
       }
 
-      // 3. Se o pagamento foi um sucesso, cria o pedido no teu PostgreSQL
+      // 3. Se sucesso, cria o pedido no banco de dados
       if (paymentIntent?.status === 'Succeeded') {
         const orderData = {
           customerId: user?.id.toString(),
@@ -77,7 +82,7 @@ export default function CheckoutPage() {
           }))
         };
 
-        await createOrder(orderData); //
+        await createOrder(orderData);
         await clearUserCart(user?.id.toString() || '');
         router.replace('/pedido-concluido');
       }
@@ -149,24 +154,18 @@ export default function CheckoutPage() {
 
           {/* Área Dinâmica de Pagamento */}
           {paymentMethod === 'card' ? (
-            <View style={styles.cardForm}>
-              <TextInput
-                style={styles.input}
-                placeholder="Número do Cartão"
-                keyboardType="numeric"
-                value={cardNumber}
-                onChangeText={setCardNumber}
+            <View style={styles.cardFormContainer}>
+              <Text style={styles.label}>Dados do Cartão</Text>
+              {/* 2. Substituídos TextInputs pelo CardField oficial */}
+              <CardField
+                postalCodeEnabled={false}
+                cardStyle={{
+                  backgroundColor: '#FFFFFF',
+                  textColor: '#000000',
+                  placeholderColor: '#999999',
+                }}
+                style={styles.cardField}
               />
-              <TextInput
-                style={styles.input}
-                placeholder="Nome Impresso no Cartão"
-                value={cardName}
-                onChangeText={setCardName}
-              />
-              <View style={styles.row}>
-                <TextInput style={[styles.input, { flex: 1, marginRight: 10 }]} placeholder="MM/AA" value={expiry} onChangeText={setExpiry} />
-                <TextInput style={[styles.input, { flex: 1 }]} placeholder="CVV" keyboardType="numeric" value={cvv} onChangeText={setCvv} />
-              </View>
             </View>
           ) : (
             <View style={styles.pixInfo}>
@@ -200,13 +199,11 @@ const styles = StyleSheet.create({
   section: { backgroundColor: '#fff', padding: 15, marginBottom: 10 },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
   sectionTitle: { fontSize: 16, fontWeight: 'bold', marginLeft: 5 },
-  // insinuante-app/app/checkout.tsx
-
   addressCard: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     padding: 12,
-    borderWidth: 1, // 👈 Alterado de borderWeight para borderWidth
+    borderWidth: 1,
     borderColor: '#eee',
     borderRadius: 8,
     marginBottom: 8
@@ -222,9 +219,12 @@ const styles = StyleSheet.create({
   methodBtnActive: { backgroundColor: Colors.primary },
   methodText: { marginLeft: 8, color: '#666', fontWeight: 'bold' },
   methodTextActive: { color: '#fff' },
-  cardForm: { gap: 10 },
-  input: { backgroundColor: '#f9f9f9', padding: 12, borderRadius: 8, borderWidth: 1, borderColor: '#ddd' },
-  row: { flexDirection: 'row' },
+
+  // Estilos do formulário Stripe
+  cardFormContainer: { paddingVertical: 10 },
+  label: { fontSize: 14, color: '#666', marginBottom: 8 },
+  cardField: { width: '100%', height: 50, marginVertical: 10 },
+
   pixInfo: { padding: 15, backgroundColor: '#e3f2fd', borderRadius: 8 },
   pixText: { color: '#1976d2', fontSize: 13, textAlign: 'center' },
   totalRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 },

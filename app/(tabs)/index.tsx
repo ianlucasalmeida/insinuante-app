@@ -129,7 +129,7 @@ export default function HomePage() {
         <Ionicons name="search" size={20} color={Colors.grey} style={styles.searchIcon} />
         <TextInput
           style={styles.searchInput}
-          placeholder="Buscar no Insinuante..."
+          placeholder="Buscar na Shopee"
           value={searchQuery}
           onChangeText={setSearchQuery}
           placeholderTextColor={Colors.grey}

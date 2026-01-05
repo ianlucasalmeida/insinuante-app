@@ -80,7 +80,7 @@ export default function ProductDetail() {
           headerTintColor: Colors.white,
           headerRight: () => (
             <TouchableOpacity onPress={handleToggleFavorite} style={{ marginRight: 15 }}>
-              <Ionicons name={isFavorited ? "heart" : "heart-outline"} size={28} color={isFavorited ? "#ff424e" : Colors.white} />
+              <Ionicons name={isFavorited ? "heart" : "heart-outline"} size={28} color={isFavorited ? "#ffffffff" : Colors.white} />
             </TouchableOpacity>
           ),
         }}

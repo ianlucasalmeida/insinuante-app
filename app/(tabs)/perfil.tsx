@@ -5,8 +5,15 @@ import { Colors } from '../../constants/Colors';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 
-// Componente reutilizável para o item de menu
-const ProfileMenuItem = ({ icon, text, onPress }) => (
+// 1. Defina a Interface para as Props
+interface ProfileMenuItemProps {
+  icon: keyof typeof Ionicons.glyphMap; // Garante que o nome do ícone seja válido
+  text: string;
+  onPress: () => void;
+}
+
+// 2. Aplique a Interface no Componente
+const ProfileMenuItem = ({ icon, text, onPress }: ProfileMenuItemProps) => (
   <TouchableOpacity style={styles.menuItem} onPress={onPress}>
     <View style={styles.menuIcon}>
       <Ionicons name={icon} size={24} color={Colors.primary} />
@@ -18,11 +25,11 @@ const ProfileMenuItem = ({ icon, text, onPress }) => (
 
 export default function ProfilePage() {
   const { user, logout } = useAuth();
-  const [notifications, setNotifications] = useState(true); // Estado de exemplo
+  const [notifications, setNotifications] = useState(true);
 
   return (
     <ScrollView style={styles.container}>
-      {/* 1. Cabeçalho do Perfil */}
+      {/* Cabeçalho do Perfil */}
       <View style={styles.header}>
         <View style={styles.avatar}>
           <Ionicons name="person-circle" size={80} color={Colors.primary} />
@@ -31,9 +38,8 @@ export default function ProfilePage() {
         <Text style={styles.headerEmail}>{user?.email}</Text>
       </View>
 
-      {/* 2. Menu de Navegação */}
+      {/* Menu de Navegação */}
       <View style={styles.menuSection}>
-        {/* 👇 ATUALIZAÇÃO AQUI 👇 */}
         <ProfileMenuItem
           icon="person-circle-outline"
           text="Meus Dados Pessoais"
@@ -42,12 +48,12 @@ export default function ProfilePage() {
         <ProfileMenuItem
           icon="list"
           text="Meus Pedidos"
-          onPress={() => router.push('/(tabs)/pedidos')} // Navega para a aba
+          onPress={() => router.push('/(tabs)/pedidos')}
         />
         <ProfileMenuItem
           icon="location-outline"
           text="Meus Endereços"
-          onPress={() => router.push('/enderecos')} // Navega para a nova tela
+          onPress={() => router.push('/enderecos')}
         />
         <ProfileMenuItem
           icon="heart-outline"
@@ -56,7 +62,7 @@ export default function ProfilePage() {
         />
       </View>
 
-      {/* 3. Seção de Configurações (Exemplo) */}
+      {/* Seção de Configurações */}
       <View style={styles.menuSection}>
         <View style={styles.settingItem}>
           <View style={styles.menuIcon}>
@@ -72,7 +78,7 @@ export default function ProfilePage() {
         </View>
       </View>
       
-      {/* 4. Logout */}
+      {/* Logout */}
       <View style={styles.logoutButton}>
         <Button 
           title="Sair (Logout)" 
@@ -84,12 +90,9 @@ export default function ProfilePage() {
   );
 }
 
-// --- ESTILOS ---
+// --- ESTILOS MANTIDOS ---
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.lightGrey,
-  },
+  container: { flex: 1, backgroundColor: Colors.lightGrey },
   header: {
     backgroundColor: Colors.white,
     paddingVertical: 20,
@@ -98,57 +101,13 @@ const styles = StyleSheet.create({
     borderBottomColor: '#eee',
     marginBottom: 10,
   },
-  avatar: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  headerName: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    marginTop: 10,
-    color: '#333',
-  },
-  headerEmail: {
-    fontSize: 16,
-    color: Colors.grey,
-    marginTop: 4,
-  },
-  menuSection: {
-    backgroundColor: Colors.white,
-    marginTop: 10,
-    borderRadius: 8,
-    marginHorizontal: 10,
-    overflow: 'hidden', // Para 'borderRadius' funcionar nos filhos
-  },
-  menuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 15,
-    paddingHorizontal: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.lightGrey,
-  },
-  menuIcon: {
-    width: 40,
-    alignItems: 'center',
-  },
-  menuText: {
-    flex: 1,
-    fontSize: 16,
-    color: '#333',
-    marginLeft: 10,
-  },
-  settingItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 10, // Menor padding
-    paddingHorizontal: 12,
-  },
-  logoutButton: {
-    margin: 20,
-    marginTop: 30,
-  }
+  avatar: { width: 80, height: 80, borderRadius: 40, justifyContent: 'center', alignItems: 'center' },
+  headerName: { fontSize: 22, fontWeight: 'bold', marginTop: 10, color: '#333' },
+  headerEmail: { fontSize: 16, color: Colors.grey, marginTop: 4 },
+  menuSection: { backgroundColor: Colors.white, marginTop: 10, borderRadius: 8, marginHorizontal: 10, overflow: 'hidden' },
+  menuItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 15, paddingHorizontal: 12, borderBottomWidth: 1, borderBottomColor: Colors.lightGrey },
+  menuIcon: { width: 40, alignItems: 'center' },
+  menuText: { flex: 1, fontSize: 16, color: '#333', marginLeft: 10 },
+  settingItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 12 },
+  logoutButton: { margin: 20, marginTop: 30 }
 });

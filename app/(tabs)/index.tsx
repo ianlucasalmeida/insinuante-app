@@ -108,11 +108,14 @@ export default function HomePage() {
         style={styles.cardImage}
         resizeMode="contain"
       />
-      {/* Exibe a categoria do produto como uma tag */}
       <Text style={styles.cardCategory}>{item.category}</Text>
       <Text style={styles.cardTitle} numberOfLines={2}>{item.name}</Text>
-      <Text style={styles.cardPrice}>R$ {item.price.toFixed(2)}</Text>
-      <Text style={styles.cardSold}>{item.sold || 0} vendidos</Text>
+
+      
+      <View>
+        <Text style={styles.cardPrice}>R$ {item.price.toFixed(2)}</Text>
+        <Text style={styles.cardSold}>{item.sold || 0} vendidos</Text>
+      </View>
     </TouchableOpacity>
   );
 
@@ -198,8 +201,9 @@ const styles = StyleSheet.create({
     shadowColor: '#000',
     shadowOpacity: 0.05,
     shadowRadius: 2,
-    alignItems: 'flex-start',
+    // Removido alignItems: 'flex-start' para permitir preenchimento total da largura
   },
+  
   cardImage: { width: '100%', height: 150, marginBottom: 8 },
   cardCategory: {
     fontSize: 10,
@@ -210,6 +214,7 @@ const styles = StyleSheet.create({
     borderRadius: 2,
     marginBottom: 5,
   },
+  
   cardTitle: { fontSize: 13, color: '#333', height: 36, marginBottom: 4 },
   cardPrice: { fontSize: 16, fontWeight: 'bold', color: Colors.primary },
   cardSold: { fontSize: 11, color: '#888', marginTop: 4 },

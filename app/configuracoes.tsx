@@ -4,9 +4,8 @@ import { Stack, router } from 'expo-router';
 import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
 import { Colors } from '../constants/Colors';
-
+import { API_URL } from '../constants/Config';
 // 🚨 IMPORTANTE: Use o mesmo IP do AuthContext!
-const API_URL = 'http://192.168.1.64:3333'; // ⚠️ TROQUE AQUI!
 
 export default function ConfigPage() {
   const { user, updateUserContext } = useAuth(); // Pega o usuário e a nova função

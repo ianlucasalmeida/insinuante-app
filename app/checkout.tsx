@@ -7,8 +7,7 @@ import { Colors } from '../constants/Colors';
 import { getUserAddresses, createOrder, clearUserCart } from '../api/publicApi';
 import { useStripe, CardField } from '@stripe/stripe-react-native';
 import axios from 'axios';
-
-const API_URL = 'http://192.168.1.64:3333';
+import { API_URL } from '../constants/Config';
 
 export default function CheckoutPage() {
   const { confirmPayment } = useStripe();

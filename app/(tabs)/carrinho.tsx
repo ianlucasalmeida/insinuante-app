@@ -5,9 +5,7 @@ import axios from 'axios';
 import { Colors } from '../../constants/Colors';
 import { useFocusEffect, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-
-// 🚨 IMPORTANTE: Use o mesmo IP do AuthContext!
-const API_URL = 'http://192.168.1.64:3333'; // ⚠️ TROQUE AQUI!
+import { API_URL } from '../../constants/Config';
 
 export default function CartPage() {
   const { user } = useAuth();

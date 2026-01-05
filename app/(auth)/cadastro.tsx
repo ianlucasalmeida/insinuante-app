@@ -3,13 +3,13 @@ import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { router } from 'expo-router';
 import { Colors } from '../../constants/Colors';
-import axios from 'axios'; // Precisamos do axios aqui
+import axios from 'axios'; 
 
 export default function Cadastro() {
-  const { register } = useAuth(); // Esta função será atualizada no AuthContext
+  const { register } = useAuth();
   const [loadingCep, setLoadingCep] = useState(false);
 
-  // --- Estados dos Dados Pessoais ---
+ 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [cpf, setCpf] = useState('');

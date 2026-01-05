@@ -4,8 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import axios from 'axios';
 import { Colors } from '../../constants/Colors';
 import { useFocusEffect } from 'expo-router';
-
-const API_URL = 'http://192.168.1.64:3333'; // 🚨 Use seu IP atual
+import { API_URL } from '../../constants/Config';
 
 export default function MyOrders() {
   const { user } = useAuth();

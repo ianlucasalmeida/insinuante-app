@@ -1,14 +1,11 @@
-// insinuante-app/context/AuthContext.tsx
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
 import axios from 'axios';
-
-// 🚨 USE A PORTA 3333 E O SEU IP ATUAL (verifique com hostname -I no Fedora)
-const API_URL = 'http://192.168.1.64:3333';
+import { API_URL } from '../constants/Config';
 
 type User = {
-  id: string; // Agora é String (UUID do Postgres)
+  id: string; 
   name: string;
   email: string;
   cpf?: string;

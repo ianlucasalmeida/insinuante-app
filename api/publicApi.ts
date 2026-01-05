@@ -1,6 +1,9 @@
 import axios from 'axios';
+import { API_URL } from '../constants/Config';
 
-const BASE_URL = 'http://192.168.1.64:3333';
+const api = axios.create({
+  baseURL: API_URL,
+});
 
 export interface Product {
   id: string;
@@ -39,10 +42,6 @@ export interface OrderData {
   status: string;
   date: string;
 }
-
-const api = axios.create({
-  baseURL: BASE_URL,
-});
 
 // Busca os produtos que os Vendedores cadastraram no Shopee-Web
 export const getProducts = async (search?: string): Promise<Product[]> => {

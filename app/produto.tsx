@@ -92,22 +92,28 @@ export default function ProductDetail() {
         <View style={styles.infoContainer}>
           <Text style={styles.title}>{product.name}</Text>
           <Text style={styles.price}>R$ {product.price.toFixed(2)}</Text>
-          
+
           <View style={styles.divider} />
 
           {/* 🏪 SEÇÃO DO VENDEDOR (ESTILO SHOPEE) */}
           <View style={styles.sellerSection}>
             <View style={styles.sellerHeader}>
-              <Image 
-                source={{ uri: product.shop?.image || 'https://placehold.co/100' }} 
-                style={styles.sellerAvatar} 
+              <Image
+                source={{ uri: product.shop?.image || 'https://placehold.co/100' }}
+                style={styles.sellerAvatar}
               />
               <View style={styles.sellerInfo}>
                 <Text style={styles.sellerName}>{product.shop?.name || 'Loja Parceira'}</Text>
                 <Text style={styles.sellerStatus}>Ativo há 12 min</Text>
               </View>
-              <TouchableOpacity style={styles.viewShopButton}>
-                <Text style={styles.viewShopText}>Ver Loja</Text>
+              <TouchableOpacity
+                style={styles.viewShopButton}
+                onPress={() => router.push({
+                  pathname: '/loja',
+                  params: { shopId: product.shop?.id }
+                })}
+              >
+                <Text style={styles.viewShopText}>Ver</Text>
               </TouchableOpacity>
             </View>
 
@@ -138,8 +144,8 @@ export default function ProductDetail() {
 
       {/* Botão de Rodapé */}
       <View style={styles.footer}>
-        <TouchableOpacity 
-          style={styles.cartButton} 
+        <TouchableOpacity
+          style={styles.cartButton}
           onPress={handleAddToCart}
           disabled={isAdding}
         >
@@ -162,7 +168,7 @@ const styles = StyleSheet.create({
   title: { fontSize: 20, fontWeight: '400', color: '#333', marginBottom: 8 },
   price: { fontSize: 24, fontWeight: 'bold', color: Colors.primary, marginBottom: 15 },
   divider: { height: 1, backgroundColor: '#f0f0f0', marginVertical: 15 },
-  
+
   // Estilos da Seção do Vendedor
   sellerSection: { paddingVertical: 5 },
   sellerHeader: { flexDirection: 'row', alignItems: 'center' },
@@ -180,7 +186,7 @@ const styles = StyleSheet.create({
 
   sectionTitle: { fontSize: 16, fontWeight: 'bold', color: '#333', marginBottom: 10 },
   description: { fontSize: 14, color: '#666', lineHeight: 20, marginBottom: 100 },
-  
+
   footer: { position: 'absolute', bottom: 0, width: '100%', backgroundColor: '#fff', padding: 12, borderTopWidth: 1, borderTopColor: '#eee' },
   cartButton: { backgroundColor: Colors.primary, flexDirection: 'row', padding: 15, borderRadius: 5, justifyContent: 'center', alignItems: 'center' },
   cartButtonText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },

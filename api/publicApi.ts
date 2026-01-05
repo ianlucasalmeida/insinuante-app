@@ -44,14 +44,22 @@ export interface OrderData {
 }
 
 // Busca os produtos que os Vendedores cadastraram no Shopee-Web
-export const getProducts = async (search?: string): Promise<Product[]> => {
+export const getProducts = async (search?: string, shopId?: string): Promise<Product[]> => {
   try {
-    // Adiciona o parâmetro na URL se ele existir
-    const url = search ? `/products?search=${search}` : '/products';
+    let url = '/products';
+    const params = new URLSearchParams();
+    
+    if (search) params.append('search', search);
+    if (shopId) params.append('shopId', shopId);
+    
+    if (params.toString()) {
+      url += `?${params.toString()}`;
+    }
+    
     const response = await api.get(url);
     return response.data;
   } catch (error) {
-    console.error("Erro ao buscar produtos do backend:", error);
+    console.error("Erro ao buscar produtos:", error);
     return [];
   }
 };
@@ -116,6 +124,16 @@ export const getFavoriteProducts = async (userId: string): Promise<Product[]> =>
 export const getUserAddresses = async (userId: string) => {
   const response = await api.get(`/addresses/user/${userId}`);
   return response.data;
+};
+
+export const getShopDetails = async (shopId: string) => {
+  try {
+    const response = await api.get(`/shops/${shopId}`);
+    return response.data;
+  } catch (error) {
+    console.error("Erro ao buscar dados da loja:", error);
+    return null;
+  }
 };
 
 export default api;

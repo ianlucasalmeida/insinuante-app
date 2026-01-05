@@ -93,17 +93,25 @@ export default function ProfilePage() {
 // --- ESTILOS MANTIDOS ---
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.lightGrey },
-  header: {
+ header: {
     backgroundColor: Colors.white,
     paddingVertical: 20,
+    paddingHorizontal: 20, // 👈 Adicionado: Evita que o texto encoste nas bordas da tela
     alignItems: 'center',
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
     marginBottom: 10,
+    width: '100%',          // 👈 Adicionado: Garante que o header ocupe a largura total
   },
   avatar: { width: 80, height: 80, borderRadius: 40, justifyContent: 'center', alignItems: 'center' },
   headerName: { fontSize: 22, fontWeight: 'bold', marginTop: 10, color: '#333' },
-  headerEmail: { fontSize: 16, color: Colors.grey, marginTop: 4 },
+  headerEmail: {
+    fontSize: 16,
+    color: Colors.grey,
+    marginTop: 4,
+    textAlign: 'center',    // 👈 Adicionado: Garante que o texto longo expanda do centro para as bordas
+    width: '100%',          // 👈 Adicionado: Permite que o texto use todo o espaço do container
+  },
   menuSection: { backgroundColor: Colors.white, marginTop: 10, borderRadius: 8, marginHorizontal: 10, overflow: 'hidden' },
   menuItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 15, paddingHorizontal: 12, borderBottomWidth: 1, borderBottomColor: Colors.lightGrey },
   menuIcon: { width: 40, alignItems: 'center' },
